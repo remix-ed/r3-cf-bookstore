@@ -1,0 +1,27 @@
+{
+  "name": "bookstore-demo",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@remix-run/dom": "latest",
+    "@remix-run/events": "latest",
+    "@remix-run/fetch-router": "latest",
+    "@remix-run/file-storage": "latest",
+    "@remix-run/headers": "latest",
+    "@remix-run/lazy-file": "latest",
+    "@remix-run/node-fetch-server": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "@typescript/native-preview": "^7.0.0-dev.20251106.1",
+    "esbuild": "^0.25.10",
+    "tsx": "^4.20.6"
+  },
+  "scripts": {
+    "dev": "NODE_ENV=development tsx watch server.ts",
+    "dev:browser": "esbuild app/assets/*.tsx --outbase=app/assets --outdir=public/assets --bundle --minify --splitting --format=esm --entry-names='[dir]/[name]' --chunk-names='chunks/[name]-[hash]' --sourcemap",
+    "start": "tsx server.ts",
+    "test": "NODE_ENV=test tsx --test",
+    "typecheck": "tsgo --noEmit"
+  }
+}
