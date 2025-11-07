@@ -1,8 +1,8 @@
 import * as assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { router } from './router.ts'
-import { loginAsCustomer, requestWithSession, assertContains } from '../test/helpers.ts'
+import { router } from '../router.ts'
+import { loginAsCustomer, requestWithSession, assertContains } from '../../test/helpers.ts'
 
 describe('account handlers', () => {
   it('GET /account redirects to login when not authenticated', async () => {

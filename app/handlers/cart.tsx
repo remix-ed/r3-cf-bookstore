@@ -1,17 +1,17 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 import { redirect } from '@remix-run/fetch-router/response-helpers'
 
-import { routes } from '../routes.ts'
+import { routes } from '../../routes.ts'
 
-import { Layout } from './layout.tsx'
-import { loadAuth, SESSION_ID_KEY } from './middleware/auth.ts'
-import { getBookById } from './models/books.ts'
-import { getCart, addToCart, updateCartItem, removeFromCart, getCartTotal } from './models/cart.ts'
-import type { User } from './models/users.ts'
-import { getCurrentUser, getStorage } from './utils/context.ts'
-import { render } from './utils/render.ts'
-import { setSessionCookie } from './utils/session.ts'
-import { RestfulForm } from './components/restful-form.tsx'
+import { Layout } from '../layout.tsx'
+import { loadAuth, SESSION_ID_KEY } from '../middleware/auth.ts'
+import { getBookById } from '../models/books.ts'
+import { getCart, addToCart, updateCartItem, removeFromCart, getCartTotal } from '../models/cart.ts'
+import type { User } from '../models/users.ts'
+import { getCurrentUser, getStorage } from '../utils/context.ts'
+import { render } from '../utils/render.ts'
+import { setSessionCookie } from '../utils/session.ts'
+import { RestfulForm } from '../components/restful-form.tsx'
 
 export default {
   middleware: [loadAuth],

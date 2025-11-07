@@ -1,8 +1,8 @@
 import * as assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { router } from './router.ts'
-import { assertContains } from '../test/helpers.ts'
+import { router } from '../router.ts'
+import { assertContains } from '../../test/helpers.ts'
 
 describe('marketing handlers', () => {
   it('GET / returns home page', async () => {

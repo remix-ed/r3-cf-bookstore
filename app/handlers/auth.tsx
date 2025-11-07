@@ -1,18 +1,18 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 import { redirect } from '@remix-run/fetch-router/response-helpers'
 
-import { routes } from '../routes.ts'
-import { getSession, setSessionCookie, login, logout } from './utils/session.ts'
+import { routes } from '../../routes.ts'
+import { getSession, setSessionCookie, login, logout } from '../utils/session.ts'
 import {
   authenticateUser,
   createUser,
   getUserByEmail,
   createPasswordResetToken,
   resetPassword,
-} from './models/users.ts'
-import { Document } from './layout.tsx'
-import { loadAuth } from './middleware/auth.ts'
-import { render } from './utils/render.ts'
+} from '../models/users.ts'
+import { Document } from '../layout.tsx'
+import { loadAuth } from '../middleware/auth.ts'
+import { render } from '../utils/render.ts'
 
 export default {
   middleware: [loadAuth],

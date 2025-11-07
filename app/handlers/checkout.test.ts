@@ -1,8 +1,8 @@
 import * as assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { router } from './router.ts'
-import { loginAsCustomer, requestWithSession } from '../test/helpers.ts'
+import { router } from '../router.ts'
+import { loginAsCustomer, requestWithSession } from '../../test/helpers.ts'
 
 describe('checkout handlers', () => {
   it('GET /checkout redirects when not authenticated', async () => {

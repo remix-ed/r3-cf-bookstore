@@ -1,13 +1,13 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 
-import { routes } from '../routes.ts'
+import { routes } from '../../routes.ts'
 
-import { BookCard } from './components/book-card.tsx'
-import { loadAuth, SESSION_ID_KEY } from './middleware/auth.ts'
-import { getCart } from './models/cart.ts'
-import { getBookBySlug } from './models/books.ts'
-import { getStorage } from './utils/context.ts'
-import { render } from './utils/render.ts'
+import { BookCard } from '../components/book-card.tsx'
+import { loadAuth, SESSION_ID_KEY } from '../middleware/auth.ts'
+import { getCart } from '../models/cart.ts'
+import { getBookBySlug } from '../models/books.ts'
+import { getStorage } from '../utils/context.ts'
+import { render } from '../utils/render.ts'
 
 export default {
   middleware: [loadAuth],

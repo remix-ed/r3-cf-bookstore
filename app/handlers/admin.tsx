@@ -1,13 +1,13 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 
-import { routes } from '../routes.ts'
+import { routes } from '../../routes.ts'
 import adminBooksHandlers from './admin.books.tsx'
 import adminOrdersHandlers from './admin.orders.tsx'
 import adminUsersHandlers from './admin.users.tsx'
-import { Layout } from './layout.tsx'
-import { requireAuth } from './middleware/auth.ts'
-import { requireAdmin } from './middleware/admin.ts'
-import { render } from './utils/render.ts'
+import { Layout } from '../layout.tsx'
+import { requireAuth } from '../middleware/auth.ts'
+import { requireAdmin } from '../middleware/admin.ts'
+import { render } from '../utils/render.ts'
 
 export default {
   middleware: [requireAuth, requireAdmin],

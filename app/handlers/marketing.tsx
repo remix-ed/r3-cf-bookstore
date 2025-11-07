@@ -1,12 +1,12 @@
 import type { BuildRouteHandler, RouteHandlers } from '@remix-run/fetch-router'
 import { Frame } from '@remix-run/dom'
 
-import { routes } from '../routes.ts'
+import { routes } from '../../routes.ts'
 
-import { Layout } from './layout.tsx'
-import { loadAuth } from './middleware/auth.ts'
-import { searchBooks } from './models/books.ts'
-import { render } from './utils/render.ts'
+import { Layout } from '../layout.tsx'
+import { loadAuth } from '../middleware/auth.ts'
+import { searchBooks } from '../models/books.ts'
+import { render } from '../utils/render.ts'
 
 export let home: BuildRouteHandler<'GET', typeof routes.home> = {
   middleware: [loadAuth],

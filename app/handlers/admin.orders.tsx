@@ -1,9 +1,9 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 
-import { routes } from '../routes.ts'
-import { getAllOrders, getOrderById } from './models/orders.ts'
-import { Layout } from './layout.tsx'
-import { render } from './utils/render.ts'
+import { routes } from '../../routes.ts'
+import { getAllOrders, getOrderById } from '../models/orders.ts'
+import { Layout } from '../layout.tsx'
+import { render } from '../utils/render.ts'
 
 export default {
   index() {

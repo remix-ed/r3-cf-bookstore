@@ -1,13 +1,13 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 import { redirect } from '@remix-run/fetch-router/response-helpers'
 
-import { routes } from '../routes.ts'
-import { requireAuth, SESSION_ID_KEY } from './middleware/auth.ts'
-import { getCart, clearCart, getCartTotal } from './models/cart.ts'
-import { createOrder, getOrderById } from './models/orders.ts'
-import { Layout } from './layout.tsx'
-import { render } from './utils/render.ts'
-import { getCurrentUser, getStorage } from './utils/context.ts'
+import { routes } from '../../routes.ts'
+import { requireAuth, SESSION_ID_KEY } from '../middleware/auth.ts'
+import { getCart, clearCart, getCartTotal } from '../models/cart.ts'
+import { createOrder, getOrderById } from '../models/orders.ts'
+import { Layout } from '../layout.tsx'
+import { render } from '../utils/render.ts'
+import { getCurrentUser, getStorage } from '../utils/context.ts'
 
 export default {
   middleware: [requireAuth],

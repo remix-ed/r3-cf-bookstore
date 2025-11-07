@@ -1,14 +1,14 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 import { redirect } from '@remix-run/fetch-router/response-helpers'
 
-import { routes } from '../routes.ts'
-import { Layout } from './layout.tsx'
-import { requireAuth } from './middleware/auth.ts'
-import { getOrdersByUserId, getOrderById } from './models/orders.ts'
-import { updateUser } from './models/users.ts'
-import { getCurrentUser } from './utils/context.ts'
-import { render } from './utils/render.ts'
-import { RestfulForm } from './components/restful-form.tsx'
+import { routes } from '../../routes.ts'
+import { Layout } from '../layout.tsx'
+import { requireAuth } from '../middleware/auth.ts'
+import { getOrdersByUserId, getOrderById } from '../models/orders.ts'
+import { updateUser } from '../models/users.ts'
+import { getCurrentUser } from '../utils/context.ts'
+import { render } from '../utils/render.ts'
+import { RestfulForm } from '../components/restful-form.tsx'
 
 export default {
   middleware: [requireAuth],

@@ -1,10 +1,10 @@
 import * as assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { loginAsAdmin, requestWithSession } from '../test/helpers.ts'
-import { router } from './router.ts'
-import { getAllBooks } from './models/books.ts'
-import { uploadsStorage as uploads } from './utils/uploads.ts'
+import { loginAsAdmin, requestWithSession } from '../../test/helpers.ts'
+import { router } from '../router.ts'
+import { getAllBooks } from '../models/books.ts'
+import { uploadsStorage as uploads } from '../utils/uploads.ts'
 
 describe('uploads handler', () => {
   it('serves uploaded files from storage', async () => {
