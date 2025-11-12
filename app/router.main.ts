@@ -65,7 +65,7 @@ export function createMiddlewareChain( env: Env, ctx: ExecutionContext): Middlew
   }
 
   // Form data parsing with R2 upload handler
-  const uploadHandler = createUploadHandler(env.UPLOADS)
+  const uploadHandler = createUploadHandler(env.UPLOADS_BUCKET)
   middleware.push(formData({ uploadHandler }))
 
   // Method override for PUT/DELETE via forms

@@ -8,6 +8,7 @@
 import type { AppContext } from '~/app/context.server'
 import { nanoid } from 'nanoid'
 import { getD1 } from '~/app/services/container'
+import { hashPassword } from '~/app/utils/password'
 
 export interface User {
   id: string
@@ -92,10 +93,11 @@ export async function createUser(
   role: 'customer' | 'admin' = 'customer',
 ): Promise<User> {
   const d1 = getD1(context)
+  const hashedPassword = await hashPassword(password)
   const row = await d1.users.create({
     id: nanoid(),
     email,
-    password, // In production, hash this!
+    password: hashedPassword,
     name,
     role
   }) as UserRow
@@ -111,7 +113,14 @@ export async function createUser(
  */
 export async function updateUser(context: AppContext, id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | undefined> {
   const d1 = getD1(context)
-  const row = await d1.users.update(id, data) as UserRow | null
+
+  // Hash password if it's being updated
+  const updateData = { ...data }
+  if (updateData.password) {
+    updateData.password = await hashPassword(updateData.password)
+  }
+
+  const row = await d1.users.update(id, updateData) as UserRow | null
   return rowToUser(row)
 }
 
@@ -154,7 +163,7 @@ export async function resetPassword(context: AppContext, token: string, newPassw
     return false
   }
 
-  const user = await getUserById(context, tokenData.user_id)
+  const user = await getUserById(context, tokenData.user_id as string)
   if (!user) return false
 
   await updateUser(context, user.id, { password: newPassword })

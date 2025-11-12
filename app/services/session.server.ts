@@ -94,14 +94,17 @@ export function createSessionService(kvNamespace: KVNamespace) {
      */
     async updateSession(sessionId: string, data: Partial<Omit<SessionData, "sessionId">>): Promise<void> {
       const session = await kv.get<SessionData>(sessionId)
-      if (!session) {
-        throw new Error(`Session not found: ${sessionId}`)
-      }
 
-      const updated: SessionData = {
+      // Create session if it doesn't exist
+      const updated: SessionData = session ? {
         ...session,
         ...data,
         lastAccessedAt: Date.now()
+      } : {
+        sessionId,
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
+        ...data
       }
 
       await kv.set(sessionId, updated, { expirationTtl: SESSION_TTL })

@@ -1,4 +1,91 @@
+/**
+ * Test Helpers for Cloudflare Workers
+ *
+ * Uses real Cloudflare bindings via Wrangler's getPlatformProxy API
+ * for integration testing against actual D1, KV, and R2.
+ *
+ * Architecture:
+ * - Tests run against local Wrangler environment (test env)
+ * - Real D1 database (bookstore-db-test)
+ * - Real KV namespaces (test-session-kv, test-cart-kv)
+ * - Real R2 bucket (bookstore-uploads-test)
+ */
+
 import { SetCookie, Cookie } from '@remix-run/headers'
+import { getPlatformProxy } from 'wrangler'
+import { createAppRouter } from '../app/router'
+import type { Env } from '../types/worker-configuration'
+
+// Cache platform proxy to reuse across tests
+let platformProxy: Awaited<ReturnType<typeof getPlatformProxy<Env>>> | null = null
+
+/**
+ * Get or create platform proxy for testing
+ * Reuses the same proxy across all tests for performance
+ */
+async function getPlatform() {
+  if (!platformProxy) {
+    platformProxy = await getPlatformProxy<Env>({
+      environment: 'test',
+      persist: true,
+      configPath: './wrangler.jsonc',
+    })
+  }
+  return platformProxy
+}
+
+/**
+ * Cleanup platform proxy (call after all tests complete)
+ * @param delayMs Optional delay in milliseconds after cleanup (useful for integration tests to avoid workerd fd cleanup issues)
+ */
+export async function cleanupPlatform(delayMs?: number) {
+  if (platformProxy) {
+    await platformProxy.dispose()
+    platformProxy = null
+
+    // Optional delay to allow workerd to cleanup file descriptors
+    if (delayMs && delayMs > 0) {
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+    }
+  }
+}
+
+/**
+ * Create a test router with real Cloudflare bindings
+ *
+ * This creates the EXACT same router as `bun run dev` using real local
+ * Cloudflare Worker bindings (D1, KV, R2) via Wrangler's getPlatformProxy.
+ *
+ * All middleware runs (cloudflare context, service injection, form data, etc.)
+ * so tests run against the real application stack.
+ *
+ * Returns an object with:
+ * - env: Real Cloudflare bindings (D1, KV, R2)
+ * - ctx: Execution context
+ * - fetch(): Router fetch method - USE THIS for all tests
+ * - router: The full router instance
+ */
+export async function createTestRouter() {
+  const platform = await getPlatform()
+
+  // Use spread operator to get all bindings from platform, then override test-specific vars
+  const env: Env = {
+    ...platform.env,
+    ENVIRONMENT: 'test',
+    NODE_ENV: 'test',
+  }
+
+  const ctx: ExecutionContext = platform.ctx
+
+  const router = createAppRouter(env, ctx)
+
+  return {
+    env,
+    ctx,
+    fetch: router.fetch.bind(router),
+    router,
+  }
+}
 
 /**
  * Extract session cookie from Set-Cookie header
@@ -75,3 +162,6 @@ export async function loginAsAdmin(router: any): Promise<string> {
 export async function loginAsCustomer(router: any): Promise<string> {
   return login(router, 'customer@example.com', 'password123')
 }
+
+// Re-export seed functions for convenience
+export { seedTestDatabase, clearTestDatabase } from './seed'

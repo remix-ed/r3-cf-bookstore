@@ -12,6 +12,8 @@
  * ```
  */
 
+import { verifyPassword } from '~/app/utils/password'
+
 /**
  * Creates a D1 service instance with typed query methods
  *
@@ -34,7 +36,7 @@ export function createD1Service(env: Env) {
      */
     users: {
       async getAll() {
-        const result = await db.prepare("SELECT * FROM users").all()
+        const result = await db.prepare("SELECT * FROM users ORDER BY created_at DESC").all()
         return result.results as any[]
       },
 
@@ -108,12 +110,16 @@ export function createD1Service(env: Env) {
           .prepare("DELETE FROM users WHERE id = ?")
           .bind(id)
           .run()
-        return result.success
+        return result.meta.changes > 0
       },
 
       async authenticate(email: string, password: string) {
         const user = await this.getByEmail(email)
-        if (!user || user.password !== password) {
+        if (!user) {
+          return undefined
+        }
+        const valid = await verifyPassword(password, user.password)
+        if (!valid) {
           return undefined
         }
         return user
@@ -229,7 +235,7 @@ export function createD1Service(env: Env) {
           .prepare("DELETE FROM books WHERE id = ?")
           .bind(id)
           .run()
-        return result.success
+        return result.meta.changes > 0
       }
     },
 

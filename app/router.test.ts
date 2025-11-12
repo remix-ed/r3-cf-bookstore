@@ -1,11 +1,15 @@
 import * as assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it, before } from 'node:test'
 
 import { createTestRouter } from '~/test/helpers'
 
-const router = createTestRouter()
-
 describe('router', () => {
+  let router: any
+
+  before(async () => {
+    router = await createTestRouter()
+  })
+
   it('responds to basic GET request', async () => {
     let response = await router.fetch('http://localhost:3000/')
 

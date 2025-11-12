@@ -10,6 +10,7 @@ import type { AppContext } from '~/app/context.server'
 import { getSessionService } from '~/app/services/container'
 import { createSessionService, type SessionData } from '~/app/services/session.server'
 import type { User } from '~/app/models/users'
+import { nanoid } from 'nanoid'
 
 /**
  * Get session ID from request
@@ -78,6 +79,15 @@ export async function logout(context: AppContext, sessionId: string): Promise<vo
 export async function getUserIdFromSession(context: AppContext, sessionId: string): Promise<string | undefined> {
   const sessionService = getSessionService(context)
   return await sessionService.getUserId(sessionId)
+}
+
+/**
+ * Create a new session ID
+ *
+ * @returns New session ID
+ */
+export function createSessionId(): string {
+  return nanoid()
 }
 
 // Re-export SessionData type
