@@ -1,23 +1,22 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 import { redirect } from '@remix-run/fetch-router/response-helpers'
 
-import { routes } from '../../routes.ts'
-import { Layout } from '../layout.tsx'
-import { requireAuth } from '../middleware/auth.ts'
-import { getOrdersByUserId, getOrderById } from '../models/orders.ts'
-import { updateUser } from '../models/users.ts'
-import { getCurrentUser } from '../utils/context.ts'
-import { render } from '../utils/render.ts'
-import { RestfulForm } from '../components/restful-form.tsx'
+import { routes } from '~/app/routes'
+import { Layout } from '~/app/layout'
+import { requireAuth, USER_KEY } from '~/app/middleware/auth'
+import { getOrdersByUserId, getOrderById } from '~/app/models/orders'
+import { updateUser } from '~/app/models/users'
+import { render } from '~/app/utils/render'
+import { RestfulForm } from '~/app/components/restful-form'
 
 export default {
   middleware: [requireAuth],
   handlers: {
-    index() {
-      let user = getCurrentUser()
+    index({ storage: context }) {
+      let user = context.get(USER_KEY)!
 
       return render(
-        <Layout>
+        <Layout user={user}>
           <h1>My Account</h1>
 
           <div class="card">
@@ -57,16 +56,16 @@ export default {
               </a>
             </p>
           </div>
-        </Layout>,
+        </Layout>, context,
       )
     },
 
     settings: {
-      index() {
-        let user = getCurrentUser()
+      index({ storage: context }) {
+        let user = context.get(USER_KEY)!
 
         return render(
-          <Layout>
+          <Layout user={user}>
             <h1>Account Settings</h1>
 
             <div class="card">
@@ -103,12 +102,12 @@ export default {
                 </a>
               </RestfulForm>
             </div>
-          </Layout>,
+          </Layout>, context,
         )
       },
 
-      async update({ formData }) {
-        let user = getCurrentUser()
+      async update({ formData, storage: context }) {
+        let user = context.get(USER_KEY)!
 
         let name = formData.get('name')?.toString() ?? ''
         let email = formData.get('email')?.toString() ?? ''
@@ -119,19 +118,19 @@ export default {
           updateData.password = password
         }
 
-        updateUser(user.id, updateData)
+        await updateUser(context, user.id, updateData)
 
         return redirect(routes.account.index.href())
       },
     },
 
     orders: {
-      index() {
-        let user = getCurrentUser()
-        let orders = getOrdersByUserId(user.id)
+      async index({ storage: context }) {
+        let user = context.get(USER_KEY)!
+        let orders = await getOrdersByUserId(context, user.id)
 
         return render(
-          <Layout>
+          <Layout user={user}>
             <h1>My Orders</h1>
 
             <div class="card">
@@ -180,17 +179,17 @@ export default {
                 Back to Account
               </a>
             </p>
-          </Layout>,
+          </Layout>, context,
         )
       },
 
-      show({ params }) {
-        let user = getCurrentUser()
-        let order = getOrderById(params.orderId)
+      async show({ params, storage: context }) {
+        let user = context.get(USER_KEY)!
+        let order = await getOrderById(context, params.orderId)
 
         if (!order || order.userId !== user.id) {
           return render(
-            <Layout>
+            <Layout user={user}>
               <div class="card">
                 <h1>Order Not Found</h1>
                 <p>
@@ -199,13 +198,12 @@ export default {
                   </a>
                 </p>
               </div>
-            </Layout>,
-            { status: 404 },
+            </Layout>, context, { status: 404 },
           )
         }
 
         return render(
-          <Layout>
+          <Layout user={user}>
             <h1>Order #{order.id}</h1>
 
             <div class="card">
@@ -259,7 +257,7 @@ export default {
                 Back to Orders
               </a>
             </p>
-          </Layout>,
+          </Layout>, context,
         )
       },
     },

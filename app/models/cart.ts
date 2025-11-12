@@ -1,3 +1,13 @@
+/**
+ * Cart Model
+ *
+ * Provides functions for shopping cart management using KV-backed session storage.
+ * Cart data is stored in the session and persists across requests.
+ */
+
+import type { AppContext } from '~/app/context.server'
+import { getSessionService } from '~/app/services/container'
+
 export interface CartItem {
   bookId: string
   slug: string
@@ -10,45 +20,44 @@ export interface Cart {
   items: CartItem[]
 }
 
-// Store carts by session ID
-const carts = new Map<string, Cart>()
-
-export function getCart(sessionId: string): Cart {
-  let cart = carts.get(sessionId)
-  if (!cart) {
-    cart = { items: [] }
-    carts.set(sessionId, cart)
-  }
-  return cart
+export async function getCart(context: AppContext, sessionId: string): Promise<Cart> {
+  const sessionService = getSessionService(context)
+  const items = await sessionService.getCart(sessionId)
+  return { items }
 }
 
-export function addToCart(
+export async function addToCart(
+  context: AppContext,
   sessionId: string,
   bookId: string,
   slug: string,
   title: string,
   price: number,
   quantity: number = 1,
-): Cart {
-  let cart = getCart(sessionId)
+): Promise<Cart> {
+  const cart = await getCart(context, sessionId)
 
-  let existingItem = cart.items.find((item) => item.bookId === bookId)
+  const existingItem = cart.items.find((item) => item.bookId === bookId)
   if (existingItem) {
     existingItem.quantity += quantity
   } else {
     cart.items.push({ bookId, slug, title, price, quantity })
   }
 
+  const sessionService = getSessionService(context)
+  await sessionService.setCart(sessionId, cart.items)
+
   return cart
 }
 
-export function updateCartItem(
+export async function updateCartItem(
+  context: AppContext,
   sessionId: string,
   bookId: string,
   quantity: number,
-): Cart | undefined {
-  let cart = getCart(sessionId)
-  let item = cart.items.find((item) => item.bookId === bookId)
+): Promise<Cart | undefined> {
+  const cart = await getCart(context, sessionId)
+  const item = cart.items.find((item) => item.bookId === bookId)
 
   if (!item) return undefined
 
@@ -58,17 +67,25 @@ export function updateCartItem(
     item.quantity = quantity
   }
 
+  const sessionService = getSessionService(context)
+  await sessionService.setCart(sessionId, cart.items)
+
   return cart
 }
 
-export function removeFromCart(sessionId: string, bookId: string): Cart {
-  let cart = getCart(sessionId)
+export async function removeFromCart(context: AppContext, sessionId: string, bookId: string): Promise<Cart> {
+  const cart = await getCart(context, sessionId)
   cart.items = cart.items.filter((item) => item.bookId !== bookId)
+
+  const sessionService = getSessionService(context)
+  await sessionService.setCart(sessionId, cart.items)
+
   return cart
 }
 
-export function clearCart(sessionId: string): void {
-  carts.set(sessionId, { items: [] })
+export async function clearCart(context: AppContext, sessionId: string): Promise<void> {
+  const sessionService = getSessionService(context)
+  await sessionService.clearCart(sessionId)
 }
 
 export function getCartTotal(cart: Cart): number {

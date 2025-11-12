@@ -1,18 +1,19 @@
 import type { BuildRouteHandler, RouteHandlers } from '@remix-run/fetch-router'
 import { Frame } from '@remix-run/dom'
 
-import { routes } from '../../routes.ts'
+import { routes } from '~/app/routes'
 
-import { Layout } from '../layout.tsx'
-import { loadAuth } from '../middleware/auth.ts'
-import { searchBooks } from '../models/books.ts'
-import { render } from '../utils/render.ts'
+import { Layout } from '~/app/layout'
+import { loadAuth, USER_KEY } from '~/app/middleware/auth'
+import { searchBooks } from '~/app/models/books'
+import { render } from '~/app/utils/render'
 
 export let home: BuildRouteHandler<'GET', typeof routes.home> = {
   middleware: [loadAuth],
-  handler() {
+  handler({ storage: context }) {
+    let user = context.get(USER_KEY) ?? null
     return render(
-      <Layout>
+      <Layout user={user}>
         <div class="card">
           <h1>Welcome to the Bookstore</h1>
           <p style="margin: 1rem 0;">
@@ -32,16 +33,17 @@ export let home: BuildRouteHandler<'GET', typeof routes.home> = {
           <Frame src={routes.fragments.bookCard.href({ slug: 'heavy-metal' })} />
           <Frame src={routes.fragments.bookCard.href({ slug: 'three-ways' })} />
         </div>
-      </Layout>,
+      </Layout>, context,
     )
   },
 }
 
 export let about: BuildRouteHandler<'GET', typeof routes.about> = {
   middleware: [loadAuth],
-  handler() {
+  handler({ storage: context }) {
+    let user = context.get(USER_KEY) ?? null
     return render(
-      <Layout>
+      <Layout user={user}>
         <div class="card">
           <h1>About Our Bookstore</h1>
           <p style="margin: 1rem 0;">
@@ -93,7 +95,7 @@ export let about: BuildRouteHandler<'GET', typeof routes.about> = {
             </a>
           </p>
         </div>
-      </Layout>,
+      </Layout>, context,
     )
   },
 }
@@ -101,9 +103,10 @@ export let about: BuildRouteHandler<'GET', typeof routes.about> = {
 export let contact: RouteHandlers<typeof routes.contact> = {
   middleware: [loadAuth],
   handlers: {
-    index() {
+    index({ storage: context }) {
+      let user = context.get(USER_KEY) ?? null
       return render(
-        <Layout>
+        <Layout user={user}>
           <div class="card">
             <h1>Contact Us</h1>
             <p style="margin: 1rem 0;">Have a question or feedback? We'd love to hear from you!</p>
@@ -129,25 +132,25 @@ export let contact: RouteHandlers<typeof routes.contact> = {
               </button>
             </form>
           </div>
-        </Layout>,
+        </Layout>, context,
       )
     },
 
-    async action() {
+    async action({ storage: context }) {
+      let user = context.get(USER_KEY) ?? null
       return render(
-        <Layout>
+        <Layout user={user}>
           <div class="alert alert-success">
             Thank you for your message! We'll get back to you soon.
           </div>
           <div class="card">
-            r
             <p>
               <a href={routes.home.href()} class="btn">
                 Return Home
               </a>
             </p>
           </div>
-        </Layout>,
+        </Layout>, context,
       )
     },
   },
@@ -155,12 +158,13 @@ export let contact: RouteHandlers<typeof routes.contact> = {
 
 export let search: BuildRouteHandler<'GET', typeof routes.search> = {
   middleware: [loadAuth],
-  handler({ url }) {
+  async handler({ url, storage: context }) {
+    let user = context.get(USER_KEY) ?? null
     let query = url.searchParams.get('q') ?? ''
-    let books = query ? searchBooks(query) : []
+    let books = query ? await searchBooks(context, query) : []
 
     return render(
-      <Layout>
+      <Layout user={user}>
         <h1>Search Results</h1>
 
         <div class="card" style="margin-bottom: 2rem;">
@@ -191,7 +195,7 @@ export let search: BuildRouteHandler<'GET', typeof routes.search> = {
             <p>No books found matching your search.</p>
           )}
         </div>
-      </Layout>,
+      </Layout>, context,
     )
   },
 }

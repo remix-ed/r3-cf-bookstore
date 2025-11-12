@@ -1,7 +1,7 @@
-import { routes } from '../../routes.ts'
+import { routes } from '~/app/routes'
 
-import { CartButton } from '../assets/cart-button.tsx'
-import type { Book } from '../models/books.ts'
+import { CartButton } from '~/app/assets/cart-button'
+import type { Book } from '~/app/models/books'
 
 export interface BookCardProps {
   book: Book

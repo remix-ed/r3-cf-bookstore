@@ -1,16 +1,18 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 
-import { routes } from '../../routes.ts'
-import { getAllOrders, getOrderById } from '../models/orders.ts'
-import { Layout } from '../layout.tsx'
-import { render } from '../utils/render.ts'
+import { routes } from '~/app/routes'
+import { getAllOrders, getOrderById } from '~/app/models/orders'
+import { Layout } from '~/app/layout'
+import { USER_KEY } from '~/app/middleware/auth'
+import { render } from '~/app/utils/render'
 
 export default {
-  index() {
-    let orders = getAllOrders()
+  async index({ storage: context }) {
+    let user = context.get(USER_KEY)!
+    let orders = await getAllOrders(context)
 
     return render(
-      <Layout>
+      <Layout user={user}>
         <h1>Manage Orders</h1>
 
         <p style="margin-bottom: 1rem;">
@@ -55,26 +57,26 @@ export default {
             </tbody>
           </table>
         </div>
-      </Layout>,
+      </Layout>, context,
     )
   },
 
-  show({ params }) {
-    let order = getOrderById(params.orderId)
+  async show({ params, storage: context }) {
+    let user = context.get(USER_KEY)!
+    let order = await getOrderById(context, params.orderId)
 
     if (!order) {
       return render(
-        <Layout>
+        <Layout user={user}>
           <div class="card">
             <h1>Order Not Found</h1>
           </div>
-        </Layout>,
-        { status: 404 },
+        </Layout>, context, { status: 404 },
       )
     }
 
     return render(
-      <Layout>
+      <Layout user={user}>
         <h1>Order #{order.id}</h1>
 
         <div class="card">
@@ -130,7 +132,7 @@ export default {
             Back to Orders
           </a>
         </p>
-      </Layout>,
+      </Layout>, context,
     )
   },
 } satisfies RouteHandlers<typeof routes.admin.orders>

@@ -1,35 +1,28 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 import { redirect } from '@remix-run/fetch-router/response-helpers'
 
-import { routes } from '../../routes.ts'
+import { routes } from '~/app/routes'
 
-import { Layout } from '../layout.tsx'
-import { loadAuth, SESSION_ID_KEY } from '../middleware/auth.ts'
-import { getBookById } from '../models/books.ts'
-import { getCart, addToCart, updateCartItem, removeFromCart, getCartTotal } from '../models/cart.ts'
-import type { User } from '../models/users.ts'
-import { getCurrentUser, getStorage } from '../utils/context.ts'
-import { render } from '../utils/render.ts'
-import { setSessionCookie } from '../utils/session.ts'
-import { RestfulForm } from '../components/restful-form.tsx'
+import { Layout } from '~/app/layout'
+import { loadAuth, SESSION_ID_KEY, USER_KEY } from '~/app/middleware/auth'
+import { getBookById } from '~/app/models/books'
+import { getCart, addToCart, updateCartItem, removeFromCart, getCartTotal } from '~/app/models/cart'
+import { render } from '~/app/utils/render'
+import { setSessionCookie } from '~/app/utils/session'
+import { RestfulForm } from '~/app/components/restful-form'
 
 export default {
   middleware: [loadAuth],
   handlers: {
-    index() {
-      let sessionId = getStorage().get(SESSION_ID_KEY)
-      let cart = getCart(sessionId)
+    async index({ storage: context }) {
+      let sessionId = context.get(SESSION_ID_KEY)
+      let cart = await getCart(context, sessionId)
       let total = getCartTotal(cart)
 
-      let user: User | null = null
-      try {
-        user = getCurrentUser()
-      } catch {
-        // user not authenticated
-      }
+      let user = context.get(USER_KEY) ?? null
 
       return render(
-        <Layout>
+        <Layout user={user}>
           <h1>Shopping Cart</h1>
 
           <div class="card">
@@ -132,24 +125,24 @@ export default {
               </>
             )}
           </div>
-        </Layout>,
+        </Layout>, context,
       )
     },
 
     api: {
-      async add({ storage, formData }) {
+      async add({ storage: context, formData }) {
         // Simulate network latency
         await new Promise((resolve) => setTimeout(resolve, 1000))
 
-        let sessionId = storage.get(SESSION_ID_KEY)
+        let sessionId = context.get(SESSION_ID_KEY)
         let bookId = formData.get('bookId')?.toString() ?? ''
 
-        let book = getBookById(bookId)
+        let book = await getBookById(context, bookId)
         if (!book) {
           return new Response('Book not found', { status: 404 })
         }
 
-        addToCart(sessionId, book.id, book.slug, book.title, book.price, 1)
+        await addToCart(context, sessionId, book.id, book.slug, book.title, book.price, 1)
 
         let headers = new Headers()
         setSessionCookie(headers, sessionId)
@@ -161,12 +154,12 @@ export default {
         return redirect(routes.cart.index.href(), { headers })
       },
 
-      async update({ storage, formData }) {
-        let sessionId = storage.get(SESSION_ID_KEY)
+      async update({ storage: context, formData }) {
+        let sessionId = context.get(SESSION_ID_KEY)
         let bookId = formData.get('bookId')?.toString() ?? ''
         let quantity = parseInt(formData.get('quantity')?.toString() ?? '1', 10)
 
-        updateCartItem(sessionId, bookId, quantity)
+        await updateCartItem(context, sessionId, bookId, quantity)
 
         let headers = new Headers()
         setSessionCookie(headers, sessionId)
@@ -178,14 +171,14 @@ export default {
         return redirect(routes.cart.index.href(), { headers })
       },
 
-      async remove({ storage, formData }) {
+      async remove({ storage: context, formData }) {
         // Simulate network latency
         await new Promise((resolve) => setTimeout(resolve, 1000))
 
-        let sessionId = storage.get(SESSION_ID_KEY)
+        let sessionId = context.get(SESSION_ID_KEY)
         let bookId = formData.get('bookId')?.toString() ?? ''
 
-        removeFromCart(sessionId, bookId)
+        await removeFromCart(context, sessionId, bookId)
 
         let headers = new Headers()
         setSessionCookie(headers, sessionId)

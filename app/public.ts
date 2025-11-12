@@ -1,40 +1,36 @@
-import * as path from 'node:path'
+/**
+ * Static Asset Handlers for Workers Static Assets
+ *
+ * Serves static assets (JS bundles, images) from Workers Static Assets.
+ * Files are served from the ./public directory.
+ *
+ * @see https://developers.cloudflare.com/workers/static-assets/
+ */
+
 import type { BuildRouteHandler } from '@remix-run/fetch-router'
-import { openFile } from '@remix-run/lazy-file/fs'
+import { getEnv } from '~/app/context.server'
+import { ROUTE_PATTERNS } from '~/app/routes'
 
-import { routes } from '../routes.ts'
+/**
+ * Serve JavaScript/CSS assets from Workers Static Assets
+ */
+export let assets: BuildRouteHandler<'GET', typeof ROUTE_PATTERNS.assets> = async ({ params, storage: context, request }) => {
+  const env = getEnv(context)
+  // Construct the full path for the asset
+  const url = new URL(request.url)
+  url.pathname = `/assets/${params.path}`
 
-const publicDir = path.join(import.meta.dirname, '..', 'public')
-const publicAssetsDir = path.join(publicDir, 'assets')
-const publicImagesDir = path.join(publicDir, 'images')
-
-export let assets: BuildRouteHandler<'GET', typeof routes.assets> = async ({ params }) => {
-  return serveFile(path.join(publicAssetsDir, params.path))
+  return await env.ASSETS.fetch(url)
 }
 
-export let images: BuildRouteHandler<'GET', typeof routes.images> = async ({ params }) => {
-  return serveFile(path.join(publicImagesDir, params.path))
-}
+/**
+ * Serve images from Workers Static Assets
+ */
+export let images: BuildRouteHandler<'GET', typeof ROUTE_PATTERNS.images> = async ({ params, storage: context, request }) => {
+  const env = getEnv(context)
+  // Construct the full path for the image
+  const url = new URL(request.url)
+  url.pathname = `/images/${params.path}`
 
-function serveFile(filename: string): Response {
-  try {
-    let file = openFile(filename)
-
-    return new Response(file, {
-      headers: {
-        'Cache-Control': 'no-store, must-revalidate',
-        'Content-Type': file.type,
-      },
-    })
-  } catch (error) {
-    if (isNoEntityError(error)) {
-      return new Response('Not found', { status: 404 })
-    }
-
-    throw error
-  }
-}
-
-function isNoEntityError(error: unknown): error is NodeJS.ErrnoException & { code: 'ENOENT' } {
-  return error instanceof Error && 'code' in error && error.code === 'ENOENT'
+  return await env.ASSETS.fetch(url)
 }

@@ -1,18 +1,20 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 import { redirect } from '@remix-run/fetch-router/response-helpers'
 
-import { routes } from '../../routes.ts'
-import { getAllBooks, getBookById, createBook, updateBook, deleteBook } from '../models/books.ts'
-import { Layout } from '../layout.tsx'
-import { render } from '../utils/render.ts'
-import { RestfulForm } from '../components/restful-form.tsx'
+import { routes } from '~/app/routes'
+import { getAllBooks, getBookById, createBook, updateBook, deleteBook } from '~/app/models/books'
+import { Layout } from '~/app/layout'
+import { USER_KEY } from '~/app/middleware/auth'
+import { render } from '~/app/utils/render'
+import { RestfulForm } from '~/app/components/restful-form'
 
 export default {
-  index() {
-    let books = getAllBooks()
+  async index({ storage: context }) {
+    let user = context.get(USER_KEY)!
+    let books = await getAllBooks(context)
 
     return render(
-      <Layout>
+      <Layout user={user}>
         <h1>Manage Books</h1>
 
         <p style="margin-bottom: 1rem;">
@@ -79,26 +81,26 @@ export default {
             </tbody>
           </table>
         </div>
-      </Layout>,
+      </Layout>, context,
     )
   },
 
-  show({ params }) {
-    let book = getBookById(params.bookId)
+  async show({ params, storage: context }) {
+    let user = context.get(USER_KEY)!
+    let book = await getBookById(context, params.bookId)
 
     if (!book) {
       return render(
-        <Layout>
+        <Layout user={user}>
           <div class="card">
             <h1>Book Not Found</h1>
           </div>
-        </Layout>,
-        { status: 404 },
+        </Layout>, context, { status: 404 },
       )
     }
 
     return render(
-      <Layout>
+      <Layout user={user}>
         <h1>Book Details</h1>
 
         <div class="card">
@@ -146,13 +148,14 @@ export default {
             </a>
           </div>
         </div>
-      </Layout>,
+      </Layout>, context,
     )
   },
 
-  new() {
+  new({ storage: context }) {
+    let user = context.get(USER_KEY)!
     return render(
-      <Layout>
+      <Layout user={user}>
         <h1>Add New Book</h1>
 
         <div class="card">
@@ -227,12 +230,12 @@ export default {
             </a>
           </form>
         </div>
-      </Layout>,
+      </Layout>, context,
     )
   },
 
-  async create({ formData }) {
-    createBook({
+  async create({ formData, storage: context }) {
+    await createBook(context, {
       slug: formData.get('slug')?.toString() ?? '',
       title: formData.get('title')?.toString() ?? '',
       author: formData.get('author')?.toString() ?? '',
@@ -249,22 +252,22 @@ export default {
     return redirect(routes.admin.books.index.href())
   },
 
-  edit({ params }) {
-    let book = getBookById(params.bookId)
+  async edit({ params, storage: context }) {
+    let user = context.get(USER_KEY)!
+    let book = await getBookById(context, params.bookId)
 
     if (!book) {
       return render(
-        <Layout>
+        <Layout user={user}>
           <div class="card">
             <h1>Book Not Found</h1>
           </div>
-        </Layout>,
-        { status: 404 },
+        </Layout>, context, { status: 404 },
       )
     }
 
     return render(
-      <Layout>
+      <Layout user={user}>
         <h1>Edit Book</h1>
 
         <div class="card">
@@ -370,12 +373,12 @@ export default {
             </a>
           </RestfulForm>
         </div>
-      </Layout>,
+      </Layout>, context,
     )
   },
 
-  async update({ formData, params }) {
-    let book = getBookById(params.bookId)
+  async update({ formData, params, storage: context }) {
+    let book = await getBookById(context, params.bookId)
     if (!book) {
       return new Response('Book not found', { status: 404 })
     }
@@ -384,7 +387,7 @@ export default {
     // If no file was uploaded, the form field will be empty and we keep the existing coverUrl
     let coverUrl = formData.get('cover')?.toString() || book.coverUrl
 
-    updateBook(params.bookId, {
+    await updateBook(context, params.bookId, {
       slug: formData.get('slug')?.toString() ?? '',
       title: formData.get('title')?.toString() ?? '',
       author: formData.get('author')?.toString() ?? '',
@@ -400,8 +403,8 @@ export default {
     return redirect(routes.admin.books.index.href())
   },
 
-  destroy({ params }) {
-    deleteBook(params.bookId)
+  async destroy({ params, storage: context }) {
+    await deleteBook(context, params.bookId)
 
     return redirect(routes.admin.books.index.href())
   },

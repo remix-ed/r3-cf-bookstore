@@ -1,9 +1,16 @@
 import { route, formAction, resources } from '@remix-run/fetch-router'
 
-export let routes = route({
+// Route patterns - defined once and reused for type safety
+export const ROUTE_PATTERNS = {
   assets: '/assets/*path',
   images: '/images/*path',
   uploads: '/uploads/*key',
+} as const
+
+export const routes = route({
+  assets: ROUTE_PATTERNS.assets,
+  images: ROUTE_PATTERNS.images,
+  uploads: ROUTE_PATTERNS.uploads,
 
   // Simple static routes
   home: '/',
@@ -47,7 +54,7 @@ export let routes = route({
 
     // Orders as nested resources with custom param
     orders: resources('orders', {
-      only: ['index', 'show'], // Read-only, no create/edit/delete
+      only: ['index', 'show'],
       param: 'orderId',
     }),
   }),

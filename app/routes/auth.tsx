@@ -1,24 +1,24 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 import { redirect } from '@remix-run/fetch-router/response-helpers'
 
-import { routes } from '../../routes.ts'
-import { getSession, setSessionCookie, login, logout } from '../utils/session.ts'
+import { routes } from '~/app/routes'
+import { getSession, setSessionCookie, login, logout } from '~/app/utils/session'
 import {
   authenticateUser,
   createUser,
   getUserByEmail,
   createPasswordResetToken,
   resetPassword,
-} from '../models/users.ts'
-import { Document } from '../layout.tsx'
-import { loadAuth } from '../middleware/auth.ts'
-import { render } from '../utils/render.ts'
+} from '~/app/models/users'
+import { Document } from '~/app/layout'
+import { loadAuth } from '~/app/middleware/auth'
+import { render } from '~/app/utils/render'
 
 export default {
   middleware: [loadAuth],
   handlers: {
     login: {
-      index() {
+      index({ storage: context }) {
         return render(
           <Document>
             <div class="card" style="max-width: 500px; margin: 2rem auto;">
@@ -60,14 +60,14 @@ export default {
                 <p style="font-size: 0.9rem;">Customer: customer@example.com / password123</p>
               </div>
             </div>
-          </Document>,
+          </Document>, context,
         )
       },
 
-      async action({ request, formData }) {
+      async action({ request, formData, storage: context }) {
         let email = formData.get('email')?.toString() ?? ''
         let password = formData.get('password')?.toString() ?? ''
-        let user = authenticateUser(email, password)
+        let user = await authenticateUser(context, email, password)
 
         if (!user) {
           return render(
@@ -80,13 +80,13 @@ export default {
                   </a>
                 </p>
               </div>
-            </Document>,
+            </Document>, context,
             { status: 401 },
           )
         }
 
-        let session = getSession(request)
-        login(session.sessionId, user)
+        let session = await getSession(context, request)
+        await login(context, session.sessionId, user)
 
         let headers = new Headers()
         setSessionCookie(headers, session.sessionId)
@@ -96,7 +96,7 @@ export default {
     },
 
     register: {
-      index() {
+      index({ storage: context }) {
         return render(
           <Document>
             <div class="card" style="max-width: 500px; margin: 2rem auto;">
@@ -132,17 +132,17 @@ export default {
                 Already have an account? <a href={routes.auth.login.index.href()}>Login here</a>
               </p>
             </div>
-          </Document>,
+          </Document>, context,
         )
       },
 
-      async action({ request, formData }) {
+      async action({ request, formData, storage: context }) {
         let name = formData.get('name')?.toString() ?? ''
         let email = formData.get('email')?.toString() ?? ''
         let password = formData.get('password')?.toString() ?? ''
 
         // Check if user already exists
-        if (getUserByEmail(email)) {
+        if (await getUserByEmail(context, email)) {
           return render(
             <Document>
               <div class="card" style="max-width: 500px; margin: 2rem auto;">
@@ -160,15 +160,15 @@ export default {
                   </a>
                 </p>
               </div>
-            </Document>,
+            </Document>, context,
             { status: 400 },
           )
         }
 
-        let user = createUser(email, password, name)
+        let user = await createUser(context, email, password, name)
 
-        let session = getSession(request)
-        login(session.sessionId, user)
+        let session = await getSession(context, request)
+        await login(context, session.sessionId, user)
 
         let headers = new Headers()
         setSessionCookie(headers, session.sessionId)
@@ -177,15 +177,15 @@ export default {
       },
     },
 
-    logout({ request }) {
-      let session = getSession(request)
-      logout(session.sessionId)
+    async logout({ request, storage: context }) {
+      let session = await getSession(context, request)
+      await logout(context, session.sessionId)
 
       return redirect(routes.home.href())
     },
 
     forgotPassword: {
-      index() {
+      index({ storage: context }) {
         return render(
           <Document>
             <div class="card" style="max-width: 500px; margin: 2rem auto;">
@@ -207,13 +207,13 @@ export default {
                 <a href={routes.auth.login.index.href()}>Back to Login</a>
               </p>
             </div>
-          </Document>,
+          </Document>, context,
         )
       },
 
-      async action({ formData }) {
+      async action({ formData, storage: context }) {
         let email = formData.get('email')?.toString() ?? ''
-        let token = createPasswordResetToken(email)
+        let token = await createPasswordResetToken(context, email)
 
         return render(
           <Document>
@@ -242,13 +242,13 @@ export default {
                 </a>
               </p>
             </div>
-          </Document>,
+          </Document>, context,
         )
       },
     },
 
     resetPassword: {
-      index({ params }) {
+      index({ params, storage: context }) {
         let token = params.token
 
         return render(
@@ -285,11 +285,11 @@ export default {
                 </button>
               </form>
             </div>
-          </Document>,
+          </Document>, context,
         )
       },
 
-      async action({ formData, params }) {
+      async action({ formData, params, storage: context }) {
         let password = formData.get('password')?.toString() ?? ''
         let confirmPassword = formData.get('confirmPassword')?.toString() ?? ''
 
@@ -307,12 +307,12 @@ export default {
                   </a>
                 </p>
               </div>
-            </Document>,
+            </Document>, context,
             { status: 400 },
           )
         }
 
-        let success = resetPassword(params.token, password)
+        let success = await resetPassword(context, params.token, password)
 
         if (!success) {
           return render(
@@ -325,7 +325,7 @@ export default {
                   </a>
                 </p>
               </div>
-            </Document>,
+            </Document>, context,
             { status: 400 },
           )
         }
@@ -342,7 +342,7 @@ export default {
                 </a>
               </p>
             </div>
-          </Document>,
+          </Document>, context,
         )
       },
     },

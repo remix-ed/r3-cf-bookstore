@@ -1,23 +1,24 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 import { Frame } from '@remix-run/dom'
 
-import { routes } from '../../routes.ts'
+import { routes } from '~/app/routes'
 
-import { getAllBooks, getBookBySlug, getBooksByGenre, getAvailableGenres } from '../models/books.ts'
-import { Layout } from '../layout.tsx'
-import { loadAuth } from '../middleware/auth.ts'
-import { render } from '../utils/render.ts'
-import { ImageCarousel } from '../assets/image-carousel.tsx'
+import { getAllBooks, getBookBySlug, getBooksByGenre, getAvailableGenres } from '~/app/models/books'
+import { Layout } from '~/app/layout'
+import { loadAuth, USER_KEY } from '~/app/middleware/auth'
+import { render } from '~/app/utils/render'
+import { ImageCarousel } from '~/app/assets/image-carousel'
 
 export default {
   middleware: [loadAuth],
   handlers: {
-    index() {
-      let books = getAllBooks()
-      let genres = getAvailableGenres()
+    async index({ storage: context }) {
+      let user = context.get(USER_KEY) ?? null
+      let books = await getAllBooks(context)
+      let genres = await getAvailableGenres(context)
 
       return render(
-        <Layout>
+        <Layout user={user}>
           <h1>Browse Books</h1>
 
           <div class="card" style="margin-bottom: 2rem;">
@@ -53,17 +54,18 @@ export default {
               />
             ))}
           </div>
-        </Layout>,
+        </Layout>, context,
       )
     },
 
-    genre({ params }) {
+    async genre({ params, storage: context }) {
+      let user = context.get(USER_KEY) ?? null
       let genre = params.genre
-      let books = getBooksByGenre(genre)
+      let books = await getBooksByGenre(context, genre)
 
       if (books.length === 0) {
         return render(
-          <Layout>
+          <Layout user={user}>
             <div class="card">
               <h1>Genre Not Found</h1>
               <p>No books found in the "{genre}" genre.</p>
@@ -73,13 +75,12 @@ export default {
                 </a>
               </p>
             </div>
-          </Layout>,
-          { status: 404 },
+          </Layout>, context, { status: 404 },
         )
       }
 
       return render(
-        <Layout>
+        <Layout user={user}>
           <h1>{genre.charAt(0).toUpperCase() + genre.slice(1)} Books</h1>
           <p style="margin: 1rem 0;">
             <a href={routes.books.index.href()} class="btn btn-secondary">
@@ -95,26 +96,26 @@ export default {
               />
             ))}
           </div>
-        </Layout>,
+        </Layout>, context,
       )
     },
 
-    show({ params }) {
-      let book = getBookBySlug(params.slug)
+    async show({ params, storage: context }) {
+      let user = context.get(USER_KEY) ?? null
+      let book = await getBookBySlug(context, params.slug)
 
       if (!book) {
         return render(
-          <Layout>
+          <Layout user={user}>
             <div class="card">
               <h1>Book Not Found</h1>
             </div>
-          </Layout>,
-          { status: 404 },
+          </Layout>, context, { status: 404 },
         )
       }
 
       return render(
-        <Layout>
+        <Layout user={user}>
           <div style="display: grid; grid-template-columns: 300px 1fr; gap: 2rem;">
             <div
               css={{
@@ -183,7 +184,7 @@ export default {
               </p>
             </div>
           </div>
-        </Layout>,
+        </Layout>, context,
       )
     },
   },

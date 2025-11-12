@@ -3,25 +3,34 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@remix-run/cookie": "^0.3.0",
     "@remix-run/dom": "latest",
     "@remix-run/events": "latest",
-    "@remix-run/fetch-router": "latest",
-    "@remix-run/file-storage": "latest",
-    "@remix-run/headers": "latest",
-    "@remix-run/lazy-file": "latest",
-    "@remix-run/node-fetch-server": "latest"
+    "@remix-run/fetch-proxy": "^0.7.0",
+    "@remix-run/fetch-router": "^0.8.0",
+    "@remix-run/form-data-parser": "^0.14.0",
+    "@remix-run/headers": "^0.16.0",
+    "@remix-run/html-template": "^0.3.0",
+    "@remix-run/interaction": "^0.1.0",
+    "@remix-run/multipart-parser": "^0.13.0",
+    "@remix-run/route-pattern": "^0.15.0",
+    "@remix-run/session": "^0.1.0",
+    "nanoid": "^5.1.6",
+    "valibot": "^1.1.0"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",
     "@typescript/native-preview": "^7.0.0-dev.20251106.1",
     "esbuild": "^0.25.10",
-    "tsx": "^4.20.6"
+    "wrangler": "^4.46.0"
   },
   "scripts": {
-    "dev": "PORT=5173 NODE_ENV=development tsx watch server.ts",
+    "dev": "wrangler dev",
     "dev:browser": "esbuild app/assets/*.tsx --outbase=app/assets --outdir=public/assets --bundle --minify --splitting --format=esm --entry-names='[dir]/[name]' --chunk-names='chunks/[name]-[hash]' --sourcemap",
-    "start": "tsx server.ts",
-    "test": "NODE_ENV=test tsx --test",
-    "typecheck": "tsgo --noEmit"
+    "test": "bun test",
+    "typecheck": "tsgo --noEmit",
+    "wcf:types": "wrangler types --include-runtime=false './types/worker-configuration.d.ts' && wrangler types --include-env=false './types/worker-runtime.d.ts'",
+    "db:migrate": "wrangler d1 migrations apply bookstore --local",
+    "db:seed": "wrangler d1 execute bookstore --local --file=database/seeds/seed.sql"
   }
 }

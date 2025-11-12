@@ -1,77 +1,84 @@
-import { Cookie, SetCookie } from '@remix-run/headers'
+/**
+ * Session Utilities
+ *
+ * Wrapper functions that use the SessionService from context.
+ * These functions maintain backward compatibility with existing code
+ * while using KV-backed session storage under the hood.
+ */
 
-import type { User } from '../models/users.ts'
+import type { AppContext } from '~/app/context.server'
+import { getSessionService } from '~/app/services/container'
+import { createSessionService, type SessionData } from '~/app/services/session.server'
+import type { User } from '~/app/models/users'
 
-export interface SessionData {
-  userId?: string
-  sessionId: string
-}
-
-// Simple, in-memory session store for demo purposes
-const sessions = new Map<string, SessionData>()
-
+/**
+ * Get session ID from request
+ *
+ * @param request - HTTP request
+ * @returns Session ID
+ */
 export function getSessionId(request: Request): string {
-  let cookieHeader = request.headers.get('Cookie')
-  if (!cookieHeader) return createSessionId()
-
-  let cookie = new Cookie(cookieHeader)
-  let sessionId = cookie.get('sessionId')
-
-  if (!sessionId) return createSessionId()
-
-  if (!sessions.has(sessionId)) {
-    sessions.set(sessionId, { sessionId })
-  }
-
-  return sessionId
+  const sessionService = createSessionService({} as KVNamespace) // Temporary for ID extraction
+  return sessionService.getSessionId(request)
 }
 
-export function createSessionId(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+/**
+ * Get session data from KV
+ *
+ * @param storage - App storage
+ * @param request - HTTP request
+ * @returns Session data
+ */
+export async function getSession(context: AppContext, request: Request): Promise<SessionData> {
+  const sessionService = getSessionService(context)
+  return await sessionService.getSession(request)
 }
 
-export function getSession(request: Request): SessionData {
-  let sessionId = getSessionId(request)
-  let session = sessions.get(sessionId)
-
-  if (!session) {
-    session = { sessionId }
-    sessions.set(sessionId, session)
-  }
-
-  return session
-}
-
+/**
+ * Set session cookie
+ *
+ * @param headers - Response headers
+ * @param sessionId - Session ID
+ */
 export function setSessionCookie(headers: Headers, sessionId: string): void {
-  let cookie = new SetCookie({
-    name: 'sessionId',
-    value: sessionId,
-    path: '/',
-    httpOnly: true,
-    sameSite: 'Lax',
-    maxAge: 2592000, // 30 days
-  })
-
-  headers.set('Set-Cookie', cookie.toString())
+  const sessionService = createSessionService({} as KVNamespace) // Temporary for cookie setting
+  sessionService.setSessionCookie(headers, sessionId)
 }
 
-export function login(sessionId: string, user: User): void {
-  let session = sessions.get(sessionId)
-  if (!session) {
-    session = { sessionId }
-    sessions.set(sessionId, session)
-  }
-  session.userId = user.id
+/**
+ * Log in a user
+ *
+ * @param storage - App storage
+ * @param sessionId - Session ID
+ * @param user - User object
+ */
+export async function login(context: AppContext, sessionId: string, user: User): Promise<void> {
+  const sessionService = getSessionService(context)
+  await sessionService.login(sessionId, user.id)
 }
 
-export function logout(sessionId: string): void {
-  let session = sessions.get(sessionId)
-  if (session) {
-    delete session.userId
-  }
+/**
+ * Log out a user
+ *
+ * @param storage - App storage
+ * @param sessionId - Session ID
+ */
+export async function logout(context: AppContext, sessionId: string): Promise<void> {
+  const sessionService = getSessionService(context)
+  await sessionService.logout(sessionId)
 }
 
-export function getUserIdFromSession(sessionId: string): string | undefined {
-  let session = sessions.get(sessionId)
-  return session?.userId
+/**
+ * Get user ID from session
+ *
+ * @param storage - App storage
+ * @param sessionId - Session ID
+ * @returns User ID or undefined
+ */
+export async function getUserIdFromSession(context: AppContext, sessionId: string): Promise<string | undefined> {
+  const sessionService = getSessionService(context)
+  return await sessionService.getUserId(sessionId)
 }
+
+// Re-export SessionData type
+export type { SessionData }

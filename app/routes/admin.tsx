@@ -1,20 +1,21 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 
-import { routes } from '../../routes.ts'
-import adminBooksHandlers from './admin.books.tsx'
-import adminOrdersHandlers from './admin.orders.tsx'
-import adminUsersHandlers from './admin.users.tsx'
-import { Layout } from '../layout.tsx'
-import { requireAuth } from '../middleware/auth.ts'
-import { requireAdmin } from '../middleware/admin.ts'
-import { render } from '../utils/render.ts'
+import { routes } from '~/app/routes'
+import adminBooksHandlers from '~/app/routes/admin.books'
+import adminOrdersHandlers from '~/app/routes/admin.orders'
+import adminUsersHandlers from '~/app/routes/admin.users'
+import { Layout } from '~/app/layout'
+import { requireAuth, USER_KEY } from '~/app/middleware/auth'
+import { requireAdmin } from '~/app/middleware/admin'
+import { render } from '~/app/utils/render'
 
 export default {
   middleware: [requireAuth, requireAdmin],
   handlers: {
-    index() {
+    index({ storage: context }) {
+      let user = context.get(USER_KEY)!
       return render(
-        <Layout>
+        <Layout user={user}>
           <h1>Admin Dashboard</h1>
 
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
@@ -42,7 +43,7 @@ export default {
               </a>
             </div>
           </div>
-        </Layout>,
+        </Layout>, context,
       )
     },
 

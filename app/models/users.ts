@@ -1,111 +1,164 @@
+/**
+ * User Model
+ *
+ * Provides functions for user management using D1 database.
+ * All functions require AppContext to access D1 service.
+ */
+
+import type { AppContext } from '~/app/context.server'
+import { nanoid } from 'nanoid'
+import { getD1 } from '~/app/services/container'
+
 export interface User {
   id: string
   email: string
-  password: string // In production, this would be hashed!
+  password: string // In production, this should be hashed!
   name: string
   role: 'customer' | 'admin'
   createdAt: Date
 }
 
-const usersData: User[] = [
-  {
-    id: '1',
-    email: 'admin@bookstore.com',
-    password: 'admin123', // Never do this in production!
-    name: 'Admin User',
-    role: 'admin',
-    createdAt: new Date('2024-01-01'),
-  },
-  {
-    id: '2',
-    email: 'customer@example.com',
-    password: 'password123',
-    name: 'John Doe',
-    role: 'customer',
-    createdAt: new Date('2024-02-15'),
-  },
-]
-
-export function getAllUsers(): User[] {
-  return [...usersData]
+/**
+ * Database row type (snake_case from D1)
+ */
+interface UserRow {
+  id: string
+  email: string
+  password: string
+  name: string
+  role: 'customer' | 'admin'
+  created_at: number
 }
 
-export function getUserById(id: string): User | undefined {
-  return usersData.find((user) => user.id === id)
-}
-
-export function getUserByEmail(email: string): User | undefined {
-  return usersData.find((user) => user.email.toLowerCase() === email.toLowerCase())
-}
-
-export function authenticateUser(email: string, password: string): User | undefined {
-  let user = getUserByEmail(email)
-  if (!user || user.password !== password) {
-    return undefined
+/**
+ * Convert database row to User model
+ */
+function rowToUser(row: UserRow | null | undefined): User | undefined {
+  if (!row) return undefined
+  return {
+    id: row.id,
+    email: row.email,
+    password: row.password,
+    name: row.name,
+    role: row.role,
+    createdAt: new Date(row.created_at * 1000), // Convert unix timestamp to Date
   }
-  return user
 }
 
-export function createUser(
+/**
+ * Get all users
+ */
+export async function getAllUsers(context: AppContext): Promise<User[]> {
+  const d1 = getD1(context)
+  const rows = await d1.users.getAll() as UserRow[]
+  return rows.map(row => rowToUser(row)).filter((u): u is User => u !== undefined)
+}
+
+/**
+ * Get user by ID
+ */
+export async function getUserById(context: AppContext, id: string): Promise<User | undefined> {
+  const d1 = getD1(context)
+  const row = await d1.users.getById(id) as UserRow | null
+  return rowToUser(row)
+}
+
+/**
+ * Get user by email
+ */
+export async function getUserByEmail(context: AppContext, email: string): Promise<User | undefined> {
+  const d1 = getD1(context)
+  const row = await d1.users.getByEmail(email) as UserRow | null
+  return rowToUser(row)
+}
+
+/**
+ * Authenticate user with email and password
+ */
+export async function authenticateUser(context: AppContext, email: string, password: string): Promise<User | undefined> {
+  const d1 = getD1(context)
+  const row = await d1.users.authenticate(email, password) as UserRow | null
+  return rowToUser(row)
+}
+
+/**
+ * Create a new user
+ */
+export async function createUser(
+  context: AppContext,
   email: string,
   password: string,
   name: string,
   role: 'customer' | 'admin' = 'customer',
-): User {
-  let newUser: User = {
-    id: String(usersData.length + 1),
+): Promise<User> {
+  const d1 = getD1(context)
+  const row = await d1.users.create({
+    id: nanoid(),
     email,
     password, // In production, hash this!
     name,
-    role,
-    createdAt: new Date(),
+    role
+  }) as UserRow
+  const user = rowToUser(row)
+  if (!user) {
+    throw new Error('Failed to create user')
   }
-  usersData.push(newUser)
-  return newUser
+  return user
 }
 
-export function updateUser(id: string, data: Partial<Omit<User, 'id'>>): User | undefined {
-  let index = usersData.findIndex((user) => user.id === id)
-  if (index === -1) return undefined
-
-  usersData[index] = { ...usersData[index], ...data }
-  return usersData[index]
+/**
+ * Update user
+ */
+export async function updateUser(context: AppContext, id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | undefined> {
+  const d1 = getD1(context)
+  const row = await d1.users.update(id, data) as UserRow | null
+  return rowToUser(row)
 }
 
-export function deleteUser(id: string): boolean {
-  let index = usersData.findIndex((user) => user.id === id)
-  if (index === -1) return false
-
-  usersData.splice(index, 1)
-  return true
+/**
+ * Delete user
+ */
+export async function deleteUser(context: AppContext, id: string): Promise<boolean> {
+  const d1 = getD1(context)
+  return await d1.users.delete(id)
 }
 
-// Password reset tokens (in production, use a proper token system)
-const resetTokens = new Map<string, { userId: string; expiresAt: Date }>()
-
-export function createPasswordResetToken(email: string): string | undefined {
-  let user = getUserByEmail(email)
+/**
+ * Create password reset token
+ */
+export async function createPasswordResetToken(context: AppContext, email: string): Promise<string | undefined> {
+  const user = await getUserByEmail(context, email)
   if (!user) return undefined
 
-  let token = Math.random().toString(36).substring(2, 15)
-  resetTokens.set(token, {
-    userId: user.id,
-    expiresAt: new Date(Date.now() + 3600000), // 1 hour
-  })
+  const token = nanoid(32)
+  const expiresAt = Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
+
+  const d1 = getD1(context)
+  await d1.passwordResetTokens.create(token, user.id, expiresAt)
 
   return token
 }
 
-export function resetPassword(token: string, newPassword: string): boolean {
-  let tokenData = resetTokens.get(token)
-  if (!tokenData || tokenData.expiresAt < new Date()) {
+/**
+ * Reset password using token
+ */
+export async function resetPassword(context: AppContext, token: string, newPassword: string): Promise<boolean> {
+  const d1 = getD1(context)
+  const tokenData = await d1.passwordResetTokens.get(token)
+
+  if (!tokenData) return false
+
+  const now = Math.floor(Date.now() / 1000)
+  if (tokenData.expires_at < now) {
+    await d1.passwordResetTokens.delete(token)
     return false
   }
 
-  let user = getUserById(tokenData.userId)
+  const user = await getUserById(context, tokenData.user_id)
   if (!user) return false
 
-  user.password = newPassword
-  resetTokens.delete(token)
+  await updateUser(context, user.id, { password: newPassword })
+  await d1.passwordResetTokens.delete(token)
+
   return true
 }

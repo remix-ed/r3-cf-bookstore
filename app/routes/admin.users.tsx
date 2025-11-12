@@ -1,20 +1,20 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 import { redirect } from '@remix-run/fetch-router/response-helpers'
 
-import { routes } from '../../routes.ts'
-import { getAllUsers, getUserById, updateUser, deleteUser } from '../models/users.ts'
-import { Layout } from '../layout.tsx'
-import { render } from '../utils/render.ts'
-import { getCurrentUser } from '../utils/context.ts'
-import { RestfulForm } from '../components/restful-form.tsx'
+import { routes } from '~/app/routes'
+import { getAllUsers, getUserById, updateUser, deleteUser } from '~/app/models/users'
+import { Layout } from '~/app/layout'
+import { render } from '~/app/utils/render'
+import { USER_KEY } from '~/app/middleware/auth'
+import { RestfulForm } from '~/app/components/restful-form'
 
 export default {
-  index() {
-    let user = getCurrentUser()
-    let users = getAllUsers()
+  async index({ storage: context }) {
+    let user = context.get(USER_KEY)!
+    let users = await getAllUsers(context)
 
     return render(
-      <Layout>
+      <Layout user={user}>
         <h1>Manage Users</h1>
 
         <p style="margin-bottom: 1rem;">
@@ -74,26 +74,26 @@ export default {
             </tbody>
           </table>
         </div>
-      </Layout>,
+      </Layout>, context,
     )
   },
 
-  show({ params }) {
-    let targetUser = getUserById(params.userId)
+  async show({ params, storage: context }) {
+    let user = context.get(USER_KEY)!
+    let targetUser = await getUserById(context, params.userId)
 
     if (!targetUser) {
       return render(
-        <Layout>
+        <Layout user={user}>
           <div class="card">
             <h1>User Not Found</h1>
           </div>
-        </Layout>,
-        { status: 404 },
+        </Layout>, context, { status: 404 },
       )
     }
 
     return render(
-      <Layout>
+      <Layout user={user}>
         <h1>User Details</h1>
 
         <div class="card">
@@ -126,26 +126,26 @@ export default {
             </a>
           </div>
         </div>
-      </Layout>,
+      </Layout>, context,
     )
   },
 
-  edit({ params }) {
-    let targetUser = getUserById(params.userId)
+  async edit({ params, storage: context }) {
+    let user = context.get(USER_KEY)!
+    let targetUser = await getUserById(context, params.userId)
 
     if (!targetUser) {
       return render(
-        <Layout>
+        <Layout user={user}>
           <div class="card">
             <h1>User Not Found</h1>
           </div>
-        </Layout>,
-        { status: 404 },
+        </Layout>, context, { status: 404 },
       )
     }
 
     return render(
-      <Layout>
+      <Layout user={user}>
         <h1>Edit User</h1>
 
         <div class="card">
@@ -187,12 +187,12 @@ export default {
             </a>
           </RestfulForm>
         </div>
-      </Layout>,
+      </Layout>, context,
     )
   },
 
-  async update({ formData, params }) {
-    updateUser(params.userId, {
+  async update({ formData, params, storage: context }) {
+    await updateUser(context, params.userId, {
       name: formData.get('name')?.toString() ?? '',
       email: formData.get('email')?.toString() ?? '',
       role: (formData.get('role')?.toString() ?? 'customer') as 'customer' | 'admin',
@@ -201,8 +201,8 @@ export default {
     return redirect(routes.admin.users.index.href())
   },
 
-  destroy({ params }) {
-    deleteUser(params.userId)
+  async destroy({ params, storage: context }) {
+    await deleteUser(context, params.userId)
 
     return redirect(routes.admin.users.index.href())
   },

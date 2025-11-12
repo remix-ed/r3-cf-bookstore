@@ -1,25 +1,25 @@
 import type { RouteHandlers } from '@remix-run/fetch-router'
 import { redirect } from '@remix-run/fetch-router/response-helpers'
 
-import { routes } from '../../routes.ts'
-import { requireAuth, SESSION_ID_KEY } from '../middleware/auth.ts'
-import { getCart, clearCart, getCartTotal } from '../models/cart.ts'
-import { createOrder, getOrderById } from '../models/orders.ts'
-import { Layout } from '../layout.tsx'
-import { render } from '../utils/render.ts'
-import { getCurrentUser, getStorage } from '../utils/context.ts'
+import { routes } from '~/app/routes'
+import { requireAuth, SESSION_ID_KEY, USER_KEY } from '~/app/middleware/auth'
+import { getCart, clearCart, getCartTotal } from '~/app/models/cart'
+import { createOrder, getOrderById } from '~/app/models/orders'
+import { Layout } from '~/app/layout'
+import { render } from '~/app/utils/render'
 
 export default {
   middleware: [requireAuth],
   handlers: {
-    index() {
-      let sessionId = getStorage().get(SESSION_ID_KEY)
-      let cart = getCart(sessionId)
+    async index({ storage: context }) {
+      let user = context.get(USER_KEY)!
+      let sessionId = context.get(SESSION_ID_KEY)
+      let cart = await getCart(context, sessionId)
       let total = getCartTotal(cart)
 
       if (cart.items.length === 0) {
         return render(
-          <Layout>
+          <Layout user={user}>
             <div class="card">
               <h1>Checkout</h1>
               <p>Your cart is empty. Add some books before checking out.</p>
@@ -29,12 +29,12 @@ export default {
                 </a>
               </p>
             </div>
-          </Layout>,
+          </Layout>, context,
         )
       }
 
       return render(
-        <Layout>
+        <Layout user={user}>
           <h1>Checkout</h1>
 
           <div class="card">
@@ -104,14 +104,14 @@ export default {
               </a>
             </form>
           </div>
-        </Layout>,
+        </Layout>, context,
       )
     },
 
-    async action({ formData }) {
-      let user = getCurrentUser()
-      let sessionId = getStorage().get(SESSION_ID_KEY)
-      let cart = getCart(sessionId)
+    async action({ formData, storage: context }) {
+      let user = context.get(USER_KEY)!
+      let sessionId = context.get(SESSION_ID_KEY)
+      let cart = await getCart(context, sessionId)
 
       if (cart.items.length === 0) {
         return redirect(routes.cart.index.href())
@@ -124,7 +124,7 @@ export default {
         zip: formData.get('zip')?.toString() || '',
       }
 
-      let order = createOrder(
+      let order = await createOrder(context,
         user.id,
         cart.items.map((item) => ({
           bookId: item.bookId,
@@ -135,18 +135,18 @@ export default {
         shippingAddress,
       )
 
-      clearCart(sessionId)
+      await clearCart(context, sessionId)
 
       return redirect(routes.checkout.confirmation.href({ orderId: order.id }))
     },
 
-    confirmation({ params }) {
-      let user = getCurrentUser()
-      let order = getOrderById(params.orderId)
+    async confirmation({ params, storage: context }) {
+      let user = context.get(USER_KEY)!
+      let order = await getOrderById(context, params.orderId)
 
       if (!order || order.userId !== user.id) {
         return render(
-          <Layout>
+          <Layout user={user}>
             <div class="card">
               <h1>Order Not Found</h1>
               <p>
@@ -155,13 +155,12 @@ export default {
                 </a>
               </p>
             </div>
-          </Layout>,
-          { status: 404 },
+          </Layout>, context, { status: 404 },
         )
       }
 
       return render(
-        <Layout>
+        <Layout user={user}>
           <div class="alert alert-success">
             <h1 style="margin-bottom: 0.5rem;">Order Confirmed!</h1>
             <p>Thank you for your purchase. Your order has been placed successfully.</p>
@@ -197,7 +196,7 @@ export default {
               </a>
             </div>
           </div>
-        </Layout>,
+        </Layout>, context,
       )
     },
   },
