@@ -3,9 +3,15 @@
  *
  * Helper functions for validating data using Valibot schemas.
  * Provides consistent error handling and type-safe validation.
+ *
+ * All application code should import validation from this module,
+ * not directly from 'valibot'.
  */
 
 import * as v from 'valibot'
+
+// Re-export valibot for centralized imports
+export { v }
 
 /**
  * Validation error response
@@ -116,6 +122,31 @@ export function validateInput<TSchema extends v.BaseSchema<unknown, unknown, v.B
 }
 
 /**
+ * Validate form data from a FormData object
+ *
+ * @example
+ * const result = validateForm(formData, CreateUserInputSchema)
+ * if (!result.success) {
+ *   return Response.json({ errors: result.errors }, { status: 400 })
+ * }
+ */
+export function validateForm<TSchema extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>>(
+  formData: FormData,
+  schema: TSchema
+): ValidationResult<v.InferOutput<TSchema>> {
+  const data: Record<string, any> = {}
+
+  formData.forEach((value, key) => {
+    data[key] = value
+  })
+
+  // Convert string numbers to actual numbers for numeric fields
+  const converted = convertFormDataTypes(data)
+
+  return validate(schema, converted)
+}
+
+/**
  * Validate form data from a Request
  *
  * @example
@@ -129,16 +160,7 @@ export async function validateFormData<TSchema extends v.BaseSchema<unknown, unk
   schema: TSchema
 ): Promise<ValidationResult<v.InferOutput<TSchema>>> {
   const formData = await request.formData()
-  const data: Record<string, any> = {}
-
-  formData.forEach((value, key) => {
-    data[key] = value
-  })
-
-  // Convert string numbers to actual numbers for numeric fields
-  const converted = convertFormDataTypes(data)
-
-  return validate(schema, converted)
+  return validateForm(formData, schema)
 }
 
 /**

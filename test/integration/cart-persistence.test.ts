@@ -7,29 +7,30 @@
  */
 
 import * as assert from 'node:assert/strict'
-import { describe, it, before, beforeEach, after } from 'node:test'
+import { describe, it, before, after } from 'node:test'
 
 import {
   createTestRouter,
-  seedTestDatabase,
-  clearTestDatabase,
   cleanupPlatform,
   getSessionCookie,
   requestWithSession,
   assertContains,
   assertNotContains,
 } from '../helpers'
+import resetSeed from '~/database/seeds/test/001-test-reset.seed'
+import usersSeed from '~/database/seeds/test/002-test-users.seed'
+import booksSeed from '~/database/seeds/test/003-test-books.seed'
+import ordersSeed from '~/database/seeds/test/004-test-orders.seed'
 
 describe('Cart Persistence Integration Tests', () => {
   let router: any
 
   before(async () => {
     router = await createTestRouter()
-  })
-
-  beforeEach(async () => {
-    await clearTestDatabase(router.env.DB)
-    await seedTestDatabase(router.env.DB)
+    await resetSeed(router.env.DB)
+    await usersSeed(router.env.DB)
+    await booksSeed(router.env.DB)
+    await ordersSeed(router.env.DB)
   })
 
   after(async () => {

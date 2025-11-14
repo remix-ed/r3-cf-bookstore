@@ -7,30 +7,23 @@
  */
 
 import * as assert from 'node:assert/strict'
-import { describe, it, before, beforeEach } from 'node:test'
+import { describe, it, before } from 'node:test'
 
-import {
-  createTestRouter,
-  seedTestDatabase,
-  clearTestDatabase,
-  loginAsCustomer,
-  requestWithSession,
-  assertContains,
-  assertNotContains,
-} from '~/test/helpers'
-import { createBook } from '~/app/models/books'
-import { addToCart } from '~/app/models/cart'
+import { createTestRouter, loginAsCustomer, requestWithSession, assertContains, assertNotContains } from '~/test/helpers'
+import resetSeed from '~/database/seeds/test/001-test-reset.seed'
+import usersSeed from '~/database/seeds/test/002-test-users.seed'
+import booksSeed from '~/database/seeds/test/003-test-books.seed'
+import ordersSeed from '~/database/seeds/test/004-test-orders.seed'
 
 describe('Fragments Routes', () => {
   let router: any
 
   before(async () => {
     router = await createTestRouter()
-  })
-
-  beforeEach(async () => {
-    await clearTestDatabase(router.env.DB)
-    await seedTestDatabase(router.env.DB)
+    await resetSeed(router.env.DB)
+    await usersSeed(router.env.DB)
+    await booksSeed(router.env.DB)
+    await ordersSeed(router.env.DB)
   })
 
   // =============================================================================

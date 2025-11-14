@@ -2,7 +2,10 @@ import * as assert from 'node:assert/strict'
 import { describe, it, before } from 'node:test'
 
 import { createTestRouter, getSessionCookie, requestWithSession, loginAsAdmin, loginAsCustomer, assertContains } from '../../test/helpers.ts'
-import { seedTestDatabase, clearTestDatabase } from '../../test/seed.ts'
+import resetSeed from '~/database/seeds/test/001-test-reset.seed'
+import usersSeed from '~/database/seeds/test/002-test-users.seed'
+import booksSeed from '~/database/seeds/test/003-test-books.seed'
+import ordersSeed from '~/database/seeds/test/004-test-orders.seed'
 
 describe('checkout handlers', () => {
   let router: any
@@ -10,8 +13,10 @@ describe('checkout handlers', () => {
   before(async () => {
     router = await createTestRouter()
     // Seed database with test data
-    await clearTestDatabase(router.env.DB)
-    await seedTestDatabase(router.env.DB)
+    await resetSeed(router.env.DB)
+    await usersSeed(router.env.DB)
+    await booksSeed(router.env.DB)
+    await ordersSeed(router.env.DB)
   })
 
   it('GET /checkout redirects when not authenticated', async () => {

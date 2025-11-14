@@ -7,6 +7,8 @@
 
 import type { AppContext } from '~/app/context.server'
 import { getSessionService } from '~/app/services/container'
+import { v } from '~/app/utils/validation'
+import { nanoidValidator } from '~/app/utils/nanoid'
 
 export interface CartItem {
   bookId: string
@@ -19,6 +21,36 @@ export interface CartItem {
 export interface Cart {
   items: CartItem[]
 }
+
+// =============================================================================
+// Validation Schemas
+// =============================================================================
+
+export const CartItemSchema = v.object({
+  bookId: nanoidValidator(),
+  slug: v.pipe(v.string(), v.minLength(1), v.maxLength(255)),
+  title: v.pipe(v.string(), v.minLength(1), v.maxLength(500)),
+  price: v.pipe(v.number(), v.minValue(0)),
+  quantity: v.pipe(v.number(), v.integer(), v.minValue(1)),
+})
+
+export const CartSchema = v.object({
+  items: v.array(CartItemSchema),
+})
+
+export const AddToCartSchema = v.object({
+  ...v.omit(CartItemSchema, ['quantity']).entries,
+  quantity: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1)), 1),
+})
+
+export const UpdateCartItemSchema = v.pick(CartItemSchema, ['bookId', 'quantity'])
+
+export type AddToCartInput = v.InferOutput<typeof AddToCartSchema>
+export type UpdateCartItemInput = v.InferOutput<typeof UpdateCartItemSchema>
+
+// =============================================================================
+// Cart Functions
+// =============================================================================
 
 export async function getCart(context: AppContext, sessionId: string): Promise<Cart> {
   const sessionService = getSessionService(context)

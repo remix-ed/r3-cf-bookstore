@@ -14,7 +14,6 @@
 import { SetCookie, Cookie } from '@remix-run/headers'
 import { getPlatformProxy } from 'wrangler'
 import { createAppRouter } from '../app/router'
-import type { Env } from '../types/worker-configuration'
 
 // Cache platform proxy to reuse across tests
 let platformProxy: Awaited<ReturnType<typeof getPlatformProxy<Env>>> | null = null
@@ -162,6 +161,3 @@ export async function loginAsAdmin(router: any): Promise<string> {
 export async function loginAsCustomer(router: any): Promise<string> {
   return login(router, 'customer@example.com', 'password123')
 }
-
-// Re-export seed functions for convenience
-export { seedTestDatabase, clearTestDatabase } from './seed'

@@ -3,12 +3,16 @@ import { describe, it, before } from 'node:test'
 
 import { createTestRouter } from '~/test/helpers'
 import { getSessionCookie, assertContains } from '~/test/helpers'
+import resetSeed from '~/database/seeds/test/001-test-reset.seed'
+import usersSeed from '~/database/seeds/test/002-test-users.seed'
 
 describe('auth handlers', () => {
   let router: any
 
   before(async () => {
     router = await createTestRouter()
+    await resetSeed(router.env.DB)
+    await usersSeed(router.env.DB)
   })
 
   it('POST /login with valid credentials sets session cookie and redirects', async () => {

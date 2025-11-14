@@ -6,9 +6,10 @@
  */
 
 import type { AppContext } from '~/app/context.server'
-import { nanoid } from 'nanoid'
 import { getD1 } from '~/app/services/container'
 import { hashPassword } from '~/app/utils/password'
+import { v } from '~/app/utils/validation'
+import { generateId, nanoidValidator } from '~/app/utils/nanoid'
 
 export interface User {
   id: string
@@ -30,6 +31,64 @@ interface UserRow {
   role: 'customer' | 'admin'
   created_at: number
 }
+
+// =============================================================================
+// Validation Schemas
+// =============================================================================
+
+export const UserSchema = v.object({
+  id: nanoidValidator(),
+  email: v.pipe(v.string(), v.email(), v.maxLength(255)),
+  password: v.pipe(v.string(), v.minLength(1)), // Hashed password
+  name: v.pipe(v.string(), v.minLength(1), v.maxLength(255)),
+  role: v.picklist(['customer', 'admin']),
+  createdAt: v.date(),
+})
+
+export const UserRowSchema = v.object({
+  id: UserSchema.entries.id,
+  email: UserSchema.entries.email,
+  password: UserSchema.entries.password,
+  name: UserSchema.entries.name,
+  role: UserSchema.entries.role,
+  created_at: v.number(), // Different from UserSchema.createdAt
+})
+
+export const InsertUserSchema = v.object({
+  ...v.omit(UserSchema, ['id', 'createdAt', 'password', 'role']).entries,
+  password: v.pipe(v.string(), v.minLength(8), v.maxLength(100)), // Plaintext password (will be hashed)
+  role: v.optional(v.picklist(['customer', 'admin']), 'customer'),
+})
+
+export const UpdateUserSchema = v.partial(
+  v.omit(InsertUserSchema, ['role'])
+)
+
+export const AdminUpdateUserSchema = v.partial(InsertUserSchema)
+
+export const LoginSchema = v.object({
+  ...v.pick(UserSchema, ['email']).entries,
+  password: v.pipe(v.string(), v.minLength(1)),
+})
+
+export const PasswordResetTokenSchema = v.object({
+  token: nanoidValidator(32),
+})
+
+export const ResetPasswordSchema = v.object({
+  ...PasswordResetTokenSchema.entries,
+  ...v.pick(InsertUserSchema, ['password']).entries,
+})
+
+export type InsertUserInput = v.InferOutput<typeof InsertUserSchema>
+export type UpdateUserInput = v.InferOutput<typeof UpdateUserSchema>
+export type AdminUpdateUserInput = v.InferOutput<typeof AdminUpdateUserSchema>
+export type LoginInput = v.InferOutput<typeof LoginSchema>
+export type ResetPasswordInput = v.InferOutput<typeof ResetPasswordSchema>
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
 
 /**
  * Convert database row to User model
@@ -95,7 +154,7 @@ export async function createUser(
   const d1 = getD1(context)
   const hashedPassword = await hashPassword(password)
   const row = await d1.users.create({
-    id: nanoid(),
+    id: generateId(),
     email,
     password: hashedPassword,
     name,
@@ -139,7 +198,7 @@ export async function createPasswordResetToken(context: AppContext, email: strin
   const user = await getUserByEmail(context, email)
   if (!user) return undefined
 
-  const token = nanoid(32)
+  const token = generateId(32)
   const expiresAt = Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
 
   const d1 = getD1(context)

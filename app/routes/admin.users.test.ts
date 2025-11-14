@@ -1,28 +1,25 @@
 import * as assert from 'node:assert/strict'
-import { describe, it, before, beforeEach } from 'node:test'
+import { describe, it, before } from 'node:test'
 
 import {
   createTestRouter,
-  seedTestDatabase,
-  clearTestDatabase,
   requestWithSession,
   loginAsAdmin,
   loginAsCustomer,
   assertContains,
   assertNotContains,
 } from '~/test/helpers'
-import { nanoid } from 'nanoid'
+import { generateId } from '~/app/utils/nanoid'
+import resetSeed from '~/database/seeds/test/001-test-reset.seed'
+import usersSeed from '~/database/seeds/test/002-test-users.seed'
 
 describe('Admin Users Routes', () => {
   let router: any
 
   before(async () => {
     router = await createTestRouter()
-  })
-
-  beforeEach(async () => {
-    await clearTestDatabase(router.env.DB)
-    await seedTestDatabase(router.env.DB)
+    await resetSeed(router.env.DB)
+    await usersSeed(router.env.DB)
   })
 
   // =============================================================================
@@ -242,7 +239,7 @@ describe('Admin Users Routes', () => {
 
       // Use a valid nanoid that doesn't exist
       let request = requestWithSession(
-        `http://localhost:3000/admin/users/${nanoid()}`,
+        `http://localhost:3000/admin/users/${generateId()}`,
         sessionId
       )
       let response = await router.fetch(request)
@@ -293,7 +290,7 @@ describe('Admin Users Routes', () => {
       let sessionId = await loginAsAdmin(router)
 
       let request = requestWithSession(
-        `http://localhost:3000/admin/users/${nanoid()}/edit`,
+        `http://localhost:3000/admin/users/${generateId()}/edit`,
         sessionId
       )
       let response = await router.fetch(request)

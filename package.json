@@ -27,12 +27,13 @@
   "scripts": {
     "dev": "wrangler dev",
     "dev:browser": "esbuild app/assets/*.tsx --outbase=app/assets --outdir=public/assets --bundle --minify --splitting --format=esm --entry-names='[dir]/[name]' --chunk-names='chunks/[name]-[hash]' --sourcemap",
-    "test": "bun run test:setup && bun test",
-    "test:setup": "wrangler d1 migrations apply bookstore-db-test --local --env=test && wrangler d1 execute bookstore-db-test --local --env=test --file=database/seeds/test-seed.sql",
-    "test:reset": "wrangler d1 execute bookstore-db-test --local --env=test --file=database/seeds/test-seed.sql",
-    "typecheck": "tsgo --noEmit",
-    "wcf:types": "wrangler types --include-runtime=false './types/worker-configuration.d.ts' && wrangler types --include-env=false './types/worker-runtime.d.ts'",
     "db:migrate": "wrangler d1 migrations apply bookstore-db --local",
-    "db:seed": "wrangler d1 execute bookstore-db --local --file=database/seeds/seed.sql"
+    "db:seed": "bun run scripts/seed.ts",
+    "db:seed:test": "bun run scripts/seed.ts --env=test",
+    "db:seed:prod": "bun run scripts/seed.ts --env=production",
+    "test": "bun run test:setup && bun test",
+    "test:setup": "wrangler d1 migrations apply bookstore-db-test --local --env=test",
+    "typecheck": "tsgo --noEmit",
+    "wcf:types": "wrangler types --include-runtime=false './types/worker-configuration.d.ts' && wrangler types --include-env=false './types/worker-runtime.d.ts'"
   }
 }

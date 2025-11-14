@@ -10,7 +10,7 @@ import type { AppContext } from '~/app/context.server'
 import { getSessionService } from '~/app/services/container'
 import { createSessionService, type SessionData } from '~/app/services/session.server'
 import type { User } from '~/app/models/users'
-import { nanoid } from 'nanoid'
+import { generateId } from '~/app/utils/nanoid'
 
 /**
  * Get session ID from request
@@ -87,7 +87,7 @@ export async function getUserIdFromSession(context: AppContext, sessionId: strin
  * @returns New session ID
  */
 export function createSessionId(): string {
-  return nanoid()
+  return generateId()
 }
 
 // Re-export SessionData type

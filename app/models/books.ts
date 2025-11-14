@@ -6,8 +6,9 @@
  */
 
 import type { AppContext } from '~/app/context.server'
-import { nanoid } from 'nanoid'
 import { getD1 } from '~/app/services/container'
+import { v } from '~/app/utils/validation'
+import { generateId, nanoidValidator } from '~/app/utils/nanoid'
 
 /**
  * Database row type (snake_case from D1)
@@ -44,6 +45,64 @@ export interface Book {
   publishedYear: number
   inStock: boolean
 }
+
+// =============================================================================
+// Validation Schemas
+// =============================================================================
+
+export const BookSchema = v.object({
+  id: nanoidValidator(),
+  slug: v.pipe(v.string(), v.minLength(1), v.maxLength(255)),
+  title: v.pipe(v.string(), v.minLength(1), v.maxLength(500)),
+  author: v.pipe(v.string(), v.minLength(1), v.maxLength(255)),
+  description: v.pipe(v.string(), v.minLength(1)),
+  price: v.pipe(v.number(), v.minValue(0)),
+  genre: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
+  imageUrls: v.array(v.string()),
+  coverUrl: v.string(),
+  isbn: v.pipe(v.string(), v.minLength(10), v.maxLength(17)), // ISBN-10 or ISBN-13
+  publishedYear: v.pipe(v.number(), v.minValue(1000), v.maxValue(9999)),
+  inStock: v.boolean(),
+})
+
+export const BookRowSchema = v.object({
+  id: BookSchema.entries.id,
+  slug: BookSchema.entries.slug,
+  title: BookSchema.entries.title,
+  author: BookSchema.entries.author,
+  description: BookSchema.entries.description,
+  price: BookSchema.entries.price,
+  genre: BookSchema.entries.genre,
+  image_urls: v.string(), // JSON string (different from BookSchema.imageUrls)
+  cover_url: v.string(), // Different from BookSchema.coverUrl
+  isbn: BookSchema.entries.isbn,
+  published_year: BookSchema.entries.publishedYear,
+  in_stock: v.pipe(v.number(), v.minValue(0), v.maxValue(1)), // SQLite boolean (0 or 1)
+})
+
+export const InsertBookSchema = v.object({
+  ...v.omit(BookSchema, ['id', 'imageUrls', 'coverUrl']).entries,
+  imageUrls: v.optional(v.array(v.string()), []),
+  coverUrl: v.optional(v.string(), '/images/placeholder.jpg'),
+})
+
+export const UpdateBookSchema = v.partial(InsertBookSchema)
+
+export const SearchBooksSchema = v.object({
+  query: v.optional(v.string()),
+  genre: v.optional(v.string()),
+  minPrice: v.optional(v.pipe(v.number(), v.minValue(0))),
+  maxPrice: v.optional(v.pipe(v.number(), v.minValue(0))),
+  inStock: v.optional(v.boolean()),
+})
+
+export type InsertBookInput = v.InferOutput<typeof InsertBookSchema>
+export type UpdateBookInput = v.InferOutput<typeof UpdateBookSchema>
+export type SearchBooksInput = v.InferOutput<typeof SearchBooksSchema>
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
 
 /**
  * Helper to convert DB book to app Book
@@ -103,7 +162,7 @@ export async function getAvailableGenres(context: AppContext): Promise<string[]>
 export async function createBook(context: AppContext, data: Omit<Book, 'id'>): Promise<Book> {
   const d1 = getD1(context)
   const book = await d1.books.create({
-    id: nanoid(),
+    id: generateId(),
     slug: data.slug,
     title: data.title,
     author: data.author,

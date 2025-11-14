@@ -2,11 +2,21 @@ import type { RouteHandlers } from '@remix-run/fetch-router'
 import { redirect } from '@remix-run/fetch-router/response-helpers'
 
 import { routes } from '~/app/routes'
-import { getAllBooks, getBookById, createBook, updateBook, deleteBook } from '~/app/models/books'
+import {
+  getAllBooks,
+  getBookById,
+  createBook,
+  updateBook,
+  deleteBook,
+  InsertBookSchema,
+  UpdateBookSchema,
+} from '~/app/models/books'
 import { Layout } from '~/app/layout'
 import { USER_KEY } from '~/app/middleware/auth'
 import { render } from '~/app/utils/render'
 import { RestfulForm } from '~/app/components/restful-form'
+import { validateForm } from '~/app/utils/validation'
+import { renderNotFound, renderValidationError } from '~/app/utils/errors'
 
 export default {
   async index({ storage: context }) {
@@ -90,13 +100,15 @@ export default {
     let book = await getBookById(context, params.bookId)
 
     if (!book) {
-      return render(
-        <Layout user={user}>
-          <div class="card">
-            <h1>Book Not Found</h1>
-          </div>
-        </Layout>, context, { status: 404 },
-      )
+      return renderNotFound(context, {
+        user,
+        title: 'Book Not Found',
+        message: 'The book you are looking for does not exist.',
+        actions: [
+          { label: 'Back to Books', href: routes.admin.books.index.href() },
+          { label: 'Add New Book', href: routes.admin.books.new.href(), variant: 'secondary' },
+        ],
+      })
     }
 
     return render(
@@ -234,20 +246,22 @@ export default {
     )
   },
 
-  async create({ formData, storage: context }) {
-    await createBook(context, {
-      slug: formData.get('slug')?.toString() ?? '',
-      title: formData.get('title')?.toString() ?? '',
-      author: formData.get('author')?.toString() ?? '',
-      description: formData.get('description')?.toString() ?? '',
-      price: parseFloat(formData.get('price')?.toString() ?? '0'),
-      genre: formData.get('genre')?.toString() ?? '',
-      coverUrl: formData.get('cover')?.toString() ?? '/images/placeholder.jpg',
-      imageUrls: [],
-      isbn: formData.get('isbn')?.toString() ?? '',
-      publishedYear: parseInt(formData.get('publishedYear')?.toString() ?? '2024', 10),
-      inStock: formData.get('inStock')?.toString() === 'true',
-    })
+  async create({ request, formData, storage: context }) {
+    let user = context.get(USER_KEY)!
+
+    // Validate book creation data
+    const validation = validateForm(formData, InsertBookSchema)
+
+    if (!validation.success) {
+      return renderValidationError(context, validation, {
+        user,
+        title: 'Validation Errors',
+        backUrl: routes.admin.books.new.href(),
+        backLabel: 'Back to Form',
+      })
+    }
+
+    await createBook(context, validation.data)
 
     return redirect(routes.admin.books.index.href())
   },
@@ -257,13 +271,14 @@ export default {
     let book = await getBookById(context, params.bookId)
 
     if (!book) {
-      return render(
-        <Layout user={user}>
-          <div class="card">
-            <h1>Book Not Found</h1>
-          </div>
-        </Layout>, context, { status: 404 },
-      )
+      return renderNotFound(context, {
+        user,
+        title: 'Book Not Found',
+        message: 'The book you want to edit does not exist.',
+        actions: [
+          { label: 'Back to Books', href: routes.admin.books.index.href() },
+        ],
+      })
     }
 
     return render(
@@ -377,28 +392,40 @@ export default {
     )
   },
 
-  async update({ formData, params, storage: context }) {
+  async update({ request, formData, params, storage: context }) {
+    let user = context.get(USER_KEY)!
     let book = await getBookById(context, params.bookId)
+
     if (!book) {
-      return new Response('Book not found', { status: 404 })
+      return renderNotFound(context, {
+        user,
+        title: 'Book Not Found',
+        message: 'The book you want to update does not exist.',
+        actions: [
+          { label: 'Back to Books', href: routes.admin.books.index.href() },
+        ],
+      })
     }
 
-    // The uploadHandler automatically saves the file and returns the URL path
-    // If no file was uploaded, the form field will be empty and we keep the existing coverUrl
-    let coverUrl = formData.get('cover')?.toString() || book.coverUrl
+    // Validate book update data
+    const validation = validateForm(formData, UpdateBookSchema)
 
-    await updateBook(context, params.bookId, {
-      slug: formData.get('slug')?.toString() ?? '',
-      title: formData.get('title')?.toString() ?? '',
-      author: formData.get('author')?.toString() ?? '',
-      description: formData.get('description')?.toString() ?? '',
-      price: parseFloat(formData.get('price')?.toString() ?? '0'),
-      genre: formData.get('genre')?.toString() ?? '',
-      coverUrl,
-      isbn: formData.get('isbn')?.toString() ?? '',
-      publishedYear: parseInt(formData.get('publishedYear')?.toString() ?? '2024', 10),
-      inStock: formData.get('inStock')?.toString() === 'true',
-    })
+    if (!validation.success) {
+      return renderValidationError(context, validation, {
+        user,
+        title: 'Validation Errors',
+        backUrl: routes.admin.books.edit.href({ bookId: params.bookId }),
+        backLabel: 'Back to Form',
+      })
+    }
+
+    // Handle cover URL: if a new one was uploaded, use it; otherwise keep existing
+    const updateData = {
+      ...validation.data,
+      coverUrl: validation.data.coverUrl || book.coverUrl,
+    }
+
+    await updateBook(context, params.bookId, updateData)
 
     return redirect(routes.admin.books.index.href())
   },

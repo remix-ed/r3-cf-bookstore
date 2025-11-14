@@ -10,7 +10,7 @@
 
 import * as assert from 'node:assert/strict'
 import { describe, it, before } from 'node:test'
-import { nanoid } from 'nanoid'
+import { generateId, NANOID_PATTERN } from '~/app/utils/nanoid'
 import { createTestRouter, loginAsCustomer, requestWithSession } from '~/test/helpers'
 import { searchBooks } from '~/app/models/books'
 import { getUserByEmail, createUser } from '~/app/models/users'
@@ -22,9 +22,6 @@ import { cloudflareContextKey } from '~/app/context.server'
 import { SERVICES_KEY } from '~/app/services/container'
 import { createD1Service } from '~/app/services/d1.server'
 import { createSessionService } from '~/app/services/session.server'
-
-// Nanoid pattern for validation (URL-safe characters, 21+ length)
-const NANOID_PATTERN = /^[A-Za-z0-9_-]{21,}$/
 
 describe('Security Vulnerability Tests', () => {
   let router: any
@@ -271,8 +268,8 @@ describe('Security Vulnerability Tests', () => {
   describe('Session Fixation Protection', () => {
     it('generates unique session IDs', () => {
       // Arrange & Act
-      const sessionId1 = nanoid()
-      const sessionId2 = nanoid()
+      const sessionId1 = generateId()
+      const sessionId2 = generateId()
 
       // Assert
       assert.notEqual(sessionId1, sessionId2, 'Session IDs should be unique')
@@ -286,7 +283,7 @@ describe('Security Vulnerability Tests', () => {
       // Arrange & Act - Generate multiple session IDs
       const sessionIds = new Set<string>()
       for (let i = 0; i < 100; i++) {
-        const sessionId = nanoid()
+        const sessionId = generateId()
         sessionIds.add(sessionId)
       }
 
@@ -328,8 +325,8 @@ describe('Security Vulnerability Tests', () => {
 
     it('session data is isolated between sessions', () => {
       // Arrange & Act - Generate two separate session IDs
-      const sessionId1 = nanoid()
-      const sessionId2 = nanoid()
+      const sessionId1 = generateId()
+      const sessionId2 = generateId()
 
       // Assert - Session IDs should be unique (cryptographically secure)
       assert.notEqual(sessionId1, sessionId2, 'Sessions IDs should be unique')
@@ -346,7 +343,7 @@ describe('Security Vulnerability Tests', () => {
       // Arrange & Act - Generate multiple sessions
       const sessionIds: string[] = []
       for (let i = 0; i < 10; i++) {
-        sessionIds.push(nanoid())
+        sessionIds.push(generateId())
       }
 
       // Assert - Check that session IDs are not sequential or predictable

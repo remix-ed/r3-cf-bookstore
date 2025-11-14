@@ -8,6 +8,7 @@ import { Layout } from '~/app/layout'
 import { loadAuth, USER_KEY } from '~/app/middleware/auth'
 import { render } from '~/app/utils/render'
 import { ImageCarousel } from '~/app/assets/image-carousel'
+import { renderNotFound } from '~/app/utils/errors'
 
 export default {
   middleware: [loadAuth],
@@ -64,19 +65,14 @@ export default {
       let books = await getBooksByGenre(context, genre)
 
       if (books.length === 0) {
-        return render(
-          <Layout user={user}>
-            <div class="card">
-              <h1>Genre Not Found</h1>
-              <p>No books found in the "{genre}" genre.</p>
-              <p style="margin-top: 1rem;">
-                <a href={routes.books.index.href()} class="btn">
-                  Browse All Books
-                </a>
-              </p>
-            </div>
-          </Layout>, context, { status: 404 },
-        )
+        return renderNotFound(context, {
+          user,
+          title: 'Genre Not Found',
+          message: `No books found in the "${genre}" genre.`,
+          actions: [
+            { label: 'Browse All Books', href: routes.books.index.href() },
+          ],
+        })
       }
 
       return render(
@@ -105,13 +101,14 @@ export default {
       let book = await getBookBySlug(context, params.slug)
 
       if (!book) {
-        return render(
-          <Layout user={user}>
-            <div class="card">
-              <h1>Book Not Found</h1>
-            </div>
-          </Layout>, context, { status: 404 },
-        )
+        return renderNotFound(context, {
+          user,
+          title: 'Book Not Found',
+          message: 'The book you are looking for does not exist.',
+          actions: [
+            { label: 'Browse All Books', href: routes.books.index.href() },
+          ],
+        })
       }
 
       return render(

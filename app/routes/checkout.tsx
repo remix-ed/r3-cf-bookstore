@@ -4,9 +4,12 @@ import { redirect } from '@remix-run/fetch-router/response-helpers'
 import { routes } from '~/app/routes'
 import { requireAuth, SESSION_ID_KEY, USER_KEY } from '~/app/middleware/auth'
 import { getCart, clearCart, getCartTotal } from '~/app/models/cart'
-import { createOrder, getOrderById } from '~/app/models/orders'
+import { createOrder, getOrderById, ShippingAddressSchema } from '~/app/models/orders'
 import { Layout } from '~/app/layout'
 import { render } from '~/app/utils/render'
+import { validateForm } from '~/app/utils/validation'
+import { renderNotFound, renderValidationError } from '~/app/utils/errors'
+import { SuccessAlert } from '~/app/components/success-alert'
 
 export default {
   middleware: [requireAuth],
@@ -108,20 +111,26 @@ export default {
       )
     },
 
-    async action({ formData, storage: context }) {
+    async action({ request, formData, storage: context }) {
       let user = context.get(USER_KEY)!
       let sessionId = context.get(SESSION_ID_KEY)
       let cart = await getCart(context, sessionId)
+      let total = getCartTotal(cart)
 
       if (cart.items.length === 0) {
         return redirect(routes.cart.index.href())
       }
 
-      let shippingAddress = {
-        street: formData.get('street')?.toString() || '',
-        city: formData.get('city')?.toString() || '',
-        state: formData.get('state')?.toString() || '',
-        zip: formData.get('zip')?.toString() || '',
+      // Validate shipping address
+      const validation = validateForm(formData, ShippingAddressSchema)
+
+      if (!validation.success) {
+        return renderValidationError(context, validation, {
+          user,
+          title: 'Invalid Shipping Address',
+          backUrl: routes.checkout.index.href(),
+          backLabel: 'Back to Checkout',
+        })
       }
 
       let order = await createOrder(context,
@@ -132,7 +141,7 @@ export default {
           price: item.price,
           quantity: item.quantity,
         })),
-        shippingAddress,
+        validation.data,
       )
 
       await clearCart(context, sessionId)
@@ -145,26 +154,21 @@ export default {
       let order = await getOrderById(context, params.orderId)
 
       if (!order || order.userId !== user.id) {
-        return render(
-          <Layout user={user}>
-            <div class="card">
-              <h1>Order Not Found</h1>
-              <p>
-                <a href={routes.account.orders.index.href()} class="btn">
-                  View My Orders
-                </a>
-              </p>
-            </div>
-          </Layout>, context, { status: 404 },
-        )
+        return renderNotFound(context, {
+          user,
+          title: 'Order Not Found',
+          message: 'The order you are looking for does not exist or does not belong to you.',
+          actions: [
+            { label: 'View My Orders', href: routes.account.orders.index.href() },
+          ],
+        })
       }
 
       return render(
         <Layout user={user}>
-          <div class="alert alert-success">
-            <h1 style="margin-bottom: 0.5rem;">Order Confirmed!</h1>
+          <SuccessAlert title="Order Confirmed!">
             <p>Thank you for your purchase. Your order has been placed successfully.</p>
-          </div>
+          </SuccessAlert>
 
           <div class="card">
             <h2>Order #{order.id}</h2>

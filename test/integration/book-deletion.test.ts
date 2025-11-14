@@ -10,8 +10,6 @@ import { describe, it, before, beforeEach, after } from 'node:test'
 
 import {
   createTestRouter,
-  seedTestDatabase,
-  clearTestDatabase,
   cleanupPlatform,
   getSessionCookie,
   requestWithSession,
@@ -20,6 +18,10 @@ import {
   assertContains,
   assertNotContains,
 } from '../helpers'
+import resetSeed from '~/database/seeds/test/001-test-reset.seed'
+import usersSeed from '~/database/seeds/test/002-test-users.seed'
+import booksSeed from '~/database/seeds/test/003-test-books.seed'
+import ordersSeed from '~/database/seeds/test/004-test-orders.seed'
 
 describe('Book Deletion Integration Tests', () => {
   let router: any
@@ -28,9 +30,12 @@ describe('Book Deletion Integration Tests', () => {
     router = await createTestRouter()
   })
 
+  // Each test deletes books, so we need fresh data each time
   beforeEach(async () => {
-    await clearTestDatabase(router.env.DB)
-    await seedTestDatabase(router.env.DB)
+    await resetSeed(router.env.DB)
+    await usersSeed(router.env.DB)
+    await booksSeed(router.env.DB)
+    await ordersSeed(router.env.DB)
   })
 
   after(async () => {

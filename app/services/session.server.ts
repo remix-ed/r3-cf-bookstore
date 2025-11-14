@@ -14,7 +14,7 @@
  */
 
 import { Cookie, SetCookie } from "@remix-run/headers"
-import { nanoid } from "nanoid"
+import { generateId } from "~/app/utils/nanoid"
 import { createKVService } from "~/app/services/kv.server"
 import type { CartItem } from "~/app/models/cart"
 
@@ -50,12 +50,12 @@ export function createSessionService(kvNamespace: KVNamespace) {
      */
     getSessionId(request: Request): string {
       const cookieHeader = request.headers.get("Cookie")
-      if (!cookieHeader) return nanoid()
+      if (!cookieHeader) return generateId()
 
       const cookie = new Cookie(cookieHeader)
       const sessionId = cookie.get(SESSION_COOKIE_NAME)
 
-      return sessionId || nanoid()
+      return sessionId || generateId()
     },
 
     /**

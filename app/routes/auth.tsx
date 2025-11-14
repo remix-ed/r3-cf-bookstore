@@ -9,10 +9,17 @@ import {
   getUserByEmail,
   createPasswordResetToken,
   resetPassword,
+  LoginSchema,
+  InsertUserSchema,
+  ResetPasswordSchema,
 } from '~/app/models/users'
 import { Document } from '~/app/layout'
 import { loadAuth } from '~/app/middleware/auth'
 import { render } from '~/app/utils/render'
+import { validateForm, v } from '~/app/utils/validation'
+import { renderValidationError, renderUnauthorized } from '~/app/utils/errors'
+import { ErrorAlert } from '~/app/components/error-alert'
+import { SuccessAlert } from '~/app/components/success-alert'
 
 export default {
   middleware: [loadAuth],
@@ -65,24 +72,27 @@ export default {
       },
 
       async action({ request, formData, storage: context }) {
-        let email = formData.get('email')?.toString() ?? ''
-        let password = formData.get('password')?.toString() ?? ''
-        let user = await authenticateUser(context, email, password)
+        // Validate login credentials
+        const validation = validateForm(formData, LoginSchema)
+
+        if (!validation.success) {
+          return renderValidationError(context, validation, {
+            title: 'Login Failed',
+            backUrl: routes.auth.login.index.href(),
+            backLabel: 'Back to Login',
+            useDocument: true,
+          })
+        }
+
+        let user = await authenticateUser(context, validation.data.email, validation.data.password)
 
         if (!user) {
-          return render(
-            <Document>
-              <div class="card" style="max-width: 500px; margin: 2rem auto;">
-                <div class="alert alert-error">Invalid email or password. Please try again.</div>
-                <p>
-                  <a href={routes.auth.login.index.href()} class="btn">
-                    Back to Login
-                  </a>
-                </p>
-              </div>
-            </Document>, context,
-            { status: 401 },
-          )
+          return renderUnauthorized(context, {
+            message: 'Invalid email or password. Please try again.',
+            actions: [
+              { label: 'Back to Login', href: routes.auth.login.index.href() },
+            ],
+          })
         }
 
         let session = await getSession(context, request)
@@ -137,17 +147,25 @@ export default {
       },
 
       async action({ request, formData, storage: context }) {
-        let name = formData.get('name')?.toString() ?? ''
-        let email = formData.get('email')?.toString() ?? ''
-        let password = formData.get('password')?.toString() ?? ''
+        // Validate registration data
+        const validation = validateForm(formData, InsertUserSchema)
+
+        if (!validation.success) {
+          return renderValidationError(context, validation, {
+            title: 'Registration Failed',
+            backUrl: routes.auth.register.index.href(),
+            backLabel: 'Back to Register',
+            useDocument: true,
+          })
+        }
 
         // Check if user already exists
-        if (await getUserByEmail(context, email)) {
+        if (await getUserByEmail(context, validation.data.email)) {
           return render(
             <Document>
               <div class="card" style="max-width: 500px; margin: 2rem auto;">
-                <div class="alert alert-error">An account with this email already exists.</div>
-                <p>
+                <ErrorAlert message="An account with this email already exists." />
+                <p style="margin-top: 1rem;">
                   <a href={routes.auth.register.index.href()} class="btn">
                     Back to Register
                   </a>
@@ -165,7 +183,13 @@ export default {
           )
         }
 
-        let user = await createUser(context, email, password, name)
+        let user = await createUser(
+          context,
+          validation.data.email,
+          validation.data.password,
+          validation.data.name,
+          validation.data.role,
+        )
 
         let session = await getSession(context, request)
         await login(context, session.sessionId, user)
@@ -211,14 +235,29 @@ export default {
         )
       },
 
-      async action({ formData, storage: context }) {
-        let email = formData.get('email')?.toString() ?? ''
-        let token = await createPasswordResetToken(context, email)
+      async action({ request, formData, storage: context }) {
+        // Validate email (inline schema for simple validation)
+        const EmailSchema = v.object({
+          email: v.pipe(v.string(), v.email()),
+        })
+
+        const validation = validateForm(formData, EmailSchema)
+
+        if (!validation.success) {
+          return renderValidationError(context, validation, {
+            title: 'Invalid Email',
+            backUrl: routes.auth.forgotPassword.index.href(),
+            backLabel: 'Try Again',
+            useDocument: true,
+          })
+        }
+
+        let token = await createPasswordResetToken(context, validation.data.email)
 
         return render(
           <Document>
             <div class="card" style="max-width: 500px; margin: 2rem auto;">
-              <div class="alert alert-success">Password reset link sent! Check your email.</div>
+              <SuccessAlert message="Password reset link sent! Check your email." />
 
               {token ? (
                 <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
@@ -289,16 +328,30 @@ export default {
         )
       },
 
-      async action({ formData, params, storage: context }) {
-        let password = formData.get('password')?.toString() ?? ''
-        let confirmPassword = formData.get('confirmPassword')?.toString() ?? ''
+      async action({ request, formData, params, storage: context }) {
+        // Validate password reset data (with token and password)
+        const ResetPasswordWithConfirmSchema = v.object({
+          password: v.pipe(v.string(), v.minLength(8), v.maxLength(100)),
+          confirmPassword: v.pipe(v.string(), v.minLength(8), v.maxLength(100)),
+        })
 
-        if (password !== confirmPassword) {
+        const validation = validateForm(formData, ResetPasswordWithConfirmSchema)
+
+        if (!validation.success) {
+          return renderValidationError(context, validation, {
+            title: 'Invalid Password',
+            backUrl: routes.auth.resetPassword.index.href({ token: params.token }),
+            backLabel: 'Try Again',
+            useDocument: true,
+          })
+        }
+
+        if (validation.data.password !== validation.data.confirmPassword) {
           return render(
             <Document>
               <div class="card" style="max-width: 500px; margin: 2rem auto;">
-                <div class="alert alert-error">Passwords do not match.</div>
-                <p>
+                <ErrorAlert message="Passwords do not match." />
+                <p style="margin-top: 1rem;">
                   <a
                     href={routes.auth.resetPassword.index.href({ token: params.token })}
                     class="btn"
@@ -312,14 +365,14 @@ export default {
           )
         }
 
-        let success = await resetPassword(context, params.token, password)
+        let success = await resetPassword(context, params.token, validation.data.password)
 
         if (!success) {
           return render(
             <Document>
               <div class="card" style="max-width: 500px; margin: 2rem auto;">
-                <div class="alert alert-error">Invalid or expired reset token.</div>
-                <p>
+                <ErrorAlert message="Invalid or expired reset token." />
+                <p style="margin-top: 1rem;">
                   <a href={routes.auth.forgotPassword.index.href()} class="btn">
                     Request New Link
                   </a>
@@ -333,10 +386,8 @@ export default {
         return render(
           <Document>
             <div class="card" style="max-width: 500px; margin: 2rem auto;">
-              <div class="alert alert-success">
-                Password reset successfully! You can now login with your new password.
-              </div>
-              <p>
+              <SuccessAlert message="Password reset successfully! You can now login with your new password." />
+              <p style="margin-top: 1rem;">
                 <a href={routes.auth.login.index.href()} class="btn">
                   Login
                 </a>

@@ -6,7 +6,7 @@
  */
 
 import type { FileUpload } from '@remix-run/fetch-router/form-data-middleware'
-import { nanoid } from 'nanoid'
+import { generateId } from '~/app/utils/nanoid'
 import { createR2Service, getContentType } from '~/app/services/r2.server'
 
 /**
@@ -28,7 +28,7 @@ export function createUploadHandler(r2Bucket: R2Bucket) {
   return async function uploadHandler(file: FileUpload): Promise<string> {
     // Generate unique key for this file
     const ext = file.name.split('.').pop() || 'bin'
-    const uniqueId = nanoid(12)
+    const uniqueId = generateId(12)
     const key = `${file.fieldName}/${Date.now()}-${uniqueId}.${ext}`
 
     // Convert file to ArrayBuffer

@@ -29,7 +29,10 @@ import { generateId, NANOID_PATTERN } from '../utils/nanoid.ts'
 import { SERVICES_KEY } from '../services/container.ts'
 import { createD1Service } from '../services/d1.server.ts'
 import { createSessionService } from '../services/session.server.ts'
-import { seedTestDatabase, clearTestDatabase } from '../../test/seed.ts'
+import resetSeed from '~/database/seeds/test/001-test-reset.seed'
+import usersSeed from '~/database/seeds/test/002-test-users.seed'
+import booksSeed from '~/database/seeds/test/003-test-books.seed'
+import ordersSeed from '~/database/seeds/test/004-test-orders.seed'
 
 describe('Orders Model', () => {
   let router: any
@@ -39,8 +42,10 @@ describe('Orders Model', () => {
     router = await createTestRouter()
 
     // Clear and seed database
-    await clearTestDatabase(router.env.DB)
-    await seedTestDatabase(router.env.DB)
+    await resetSeed(router.env.DB)
+    await usersSeed(router.env.DB)
+    await booksSeed(router.env.DB)
+    await ordersSeed(router.env.DB)
 
     const storage = new Map()
     storage.set(cloudflareContextKey, { env: router.env, ctx: router.ctx })

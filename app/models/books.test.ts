@@ -11,7 +11,7 @@
  */
 
 import * as assert from 'node:assert/strict'
-import { describe, it, beforeEach } from 'node:test'
+import { describe, it, before } from 'node:test'
 import { createTestRouter } from '../../test/helpers.ts'
 import { cloudflareContextKey } from '../context.server.ts'
 import type { RequestContext } from '@remix-run/fetch-router'
@@ -19,7 +19,9 @@ import { generateId, NANOID_PATTERN } from '../utils/nanoid.ts'
 import { SERVICES_KEY } from '../services/container.ts'
 import { createD1Service } from '../services/d1.server.ts'
 import { createSessionService } from '../services/session.server.ts'
-import { seedTestDatabase, clearTestDatabase } from '../../test/seed.ts'
+import resetSeed from '~/database/seeds/test/001-test-reset.seed'
+import usersSeed from '~/database/seeds/test/002-test-users.seed'
+import booksSeed from '~/database/seeds/test/003-test-books.seed'
 import {
   getAllBooks,
   getBookById,
@@ -37,12 +39,13 @@ describe('Books Model', () => {
   let router: any
   let context: RequestContext
 
-  beforeEach(async () => {
+  before(async () => {
     router = await createTestRouter()
 
     // Clear and seed database
-    await clearTestDatabase(router.env.DB)
-    await seedTestDatabase(router.env.DB)
+    await resetSeed(router.env.DB)
+    await usersSeed(router.env.DB)
+    await booksSeed(router.env.DB)
 
     const storage = new Map()
     storage.set(cloudflareContextKey, { env: router.env, ctx: router.ctx })
@@ -66,7 +69,7 @@ describe('Books Model', () => {
 
     it('returns empty array when no books exist', async () => {
       // Arrange - Clear all data (no seed)
-      await clearTestDatabase(router.env.DB)
+      await resetSeed(router.env.DB)
 
       const storage = new Map()
       storage.set(cloudflareContextKey, { env: router.env, ctx: router.ctx })
@@ -81,6 +84,10 @@ describe('Books Model', () => {
 
       // Assert
       assert.deepStrictEqual(books, [], 'Should return empty array')
+
+      // Cleanup - Re-seed for subsequent tests
+      await usersSeed(router.env.DB)
+      await booksSeed(router.env.DB)
     })
 
     it('converts JSON imageUrls to array', async () => {
@@ -204,7 +211,7 @@ describe('Books Model', () => {
         genre: 'test',
         coverUrl: '/test.jpg',
         imageUrls: ['/test.jpg'],
-        isbn: '978-9999999992', // Unique ISBN for test
+        isbn: '978-9999999987', // Unique ISBN for test
         publishedYear: 2020,
         inStock: true,
       }
@@ -408,7 +415,7 @@ describe('Books Model', () => {
         genre: 'test',
         coverUrl: '/cover.jpg',
         imageUrls,
-        isbn: '978-9999999992', // Unique ISBN for test
+        isbn: '978-9999999995', // Unique ISBN for test
         publishedYear: 2020,
         inStock: true,
       }
@@ -433,7 +440,7 @@ describe('Books Model', () => {
         genre: 'test',
         coverUrl: '/test.jpg',
         imageUrls: ['/test.jpg'],
-        isbn: '978-9999999992', // Unique ISBN for test
+        isbn: '978-9999999996', // Unique ISBN for test
         publishedYear: 2020,
         inStock: false,
       }
@@ -495,7 +502,7 @@ describe('Books Model', () => {
         genre: 'original',
         coverUrl: '/original.jpg',
         imageUrls: ['/original.jpg'],
-        isbn: '978-9999999992', // Unique ISBN for test
+        isbn: '978-9999999997', // Unique ISBN for test
         publishedYear: 2020,
         inStock: true,
       })
@@ -583,7 +590,7 @@ describe('Books Model', () => {
         genre: 'test',
         coverUrl: '/delete.jpg',
         imageUrls: ['/delete.jpg'],
-        isbn: '978-9999999992', // Unique ISBN for test
+        isbn: '978-9999999998', // Unique ISBN for test
         publishedYear: 2020,
         inStock: true,
       })
@@ -610,7 +617,7 @@ describe('Books Model', () => {
         genre: 'test',
         coverUrl: '/test.jpg',
         imageUrls: ['/test.jpg'],
-        isbn: '978-9999999992', // Unique ISBN for test
+        isbn: '978-9999999999', // Unique ISBN for test
         publishedYear: 2020,
         inStock: true,
       })
@@ -646,7 +653,7 @@ describe('Books Model', () => {
         genre: 'integration-test',
         coverUrl: '/crud.jpg',
         imageUrls: ['/crud1.jpg', '/crud2.jpg'],
-        isbn: '978-9999999992', // Unique ISBN for test
+        isbn: '978-9999999990', // Unique ISBN for test
         publishedYear: 2024,
         inStock: true,
       })
@@ -689,7 +696,7 @@ describe('Books Model', () => {
         genre: 'test',
         coverUrl: '/search.jpg',
         imageUrls: ['/search.jpg'],
-        isbn: '978-9999999992', // Unique ISBN for test
+        isbn: '978-9999999989', // Unique ISBN for test
         publishedYear: 2024,
         inStock: true,
       })
@@ -714,7 +721,7 @@ describe('Books Model', () => {
         genre: uniqueGenre,
         coverUrl: '/genre.jpg',
         imageUrls: ['/genre.jpg'],
-        isbn: '978-9999999992', // Unique ISBN for test
+        isbn: '978-9999999988', // Unique ISBN for test
         publishedYear: 2024,
         inStock: true,
       })

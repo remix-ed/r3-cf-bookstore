@@ -8,6 +8,7 @@ import { getOrdersByUserId, getOrderById } from '~/app/models/orders'
 import { updateUser } from '~/app/models/users'
 import { render } from '~/app/utils/render'
 import { RestfulForm } from '~/app/components/restful-form'
+import { renderNotFound } from '~/app/utils/errors'
 
 export default {
   middleware: [requireAuth],
@@ -188,18 +189,14 @@ export default {
         let order = await getOrderById(context, params.orderId)
 
         if (!order || order.userId !== user.id) {
-          return render(
-            <Layout user={user}>
-              <div class="card">
-                <h1>Order Not Found</h1>
-                <p>
-                  <a href={routes.account.orders.index.href()} class="btn">
-                    Back to Orders
-                  </a>
-                </p>
-              </div>
-            </Layout>, context, { status: 404 },
-          )
+          return renderNotFound(context, {
+            user,
+            title: 'Order Not Found',
+            message: 'The order you are looking for does not exist or does not belong to you.',
+            actions: [
+              { label: 'Back to Orders', href: routes.account.orders.index.href() },
+            ],
+          })
         }
 
         return render(

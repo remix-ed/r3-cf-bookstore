@@ -7,6 +7,7 @@ import { Layout } from '~/app/layout'
 import { render } from '~/app/utils/render'
 import { USER_KEY } from '~/app/middleware/auth'
 import { RestfulForm } from '~/app/components/restful-form'
+import { renderNotFound } from '~/app/utils/errors'
 
 export default {
   async index({ storage: context }) {
@@ -83,13 +84,14 @@ export default {
     let targetUser = await getUserById(context, params.userId)
 
     if (!targetUser) {
-      return render(
-        <Layout user={user}>
-          <div class="card">
-            <h1>User Not Found</h1>
-          </div>
-        </Layout>, context, { status: 404 },
-      )
+      return renderNotFound(context, {
+        user,
+        title: 'User Not Found',
+        message: 'The user you are looking for does not exist.',
+        actions: [
+          { label: 'Back to Users', href: routes.admin.users.index.href() },
+        ],
+      })
     }
 
     return render(
@@ -135,13 +137,14 @@ export default {
     let targetUser = await getUserById(context, params.userId)
 
     if (!targetUser) {
-      return render(
-        <Layout user={user}>
-          <div class="card">
-            <h1>User Not Found</h1>
-          </div>
-        </Layout>, context, { status: 404 },
-      )
+      return renderNotFound(context, {
+        user,
+        title: 'User Not Found',
+        message: 'The user you want to edit does not exist.',
+        actions: [
+          { label: 'Back to Users', href: routes.admin.users.index.href() },
+        ],
+      })
     }
 
     return render(

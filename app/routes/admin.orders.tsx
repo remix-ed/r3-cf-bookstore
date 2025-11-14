@@ -5,6 +5,7 @@ import { getAllOrders, getOrderById } from '~/app/models/orders'
 import { Layout } from '~/app/layout'
 import { USER_KEY } from '~/app/middleware/auth'
 import { render } from '~/app/utils/render'
+import { renderNotFound } from '~/app/utils/errors'
 
 export default {
   async index({ storage: context }) {
@@ -66,13 +67,14 @@ export default {
     let order = await getOrderById(context, params.orderId)
 
     if (!order) {
-      return render(
-        <Layout user={user}>
-          <div class="card">
-            <h1>Order Not Found</h1>
-          </div>
-        </Layout>, context, { status: 404 },
-      )
+      return renderNotFound(context, {
+        user,
+        title: 'Order Not Found',
+        message: 'The order you are looking for does not exist.',
+        actions: [
+          { label: 'Back to Orders', href: routes.admin.orders.index.href() },
+        ],
+      })
     }
 
     return render(

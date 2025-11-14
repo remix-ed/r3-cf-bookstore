@@ -1,7 +1,7 @@
 import { createRouter, type Router } from '@remix-run/fetch-router'
 
 import { routeRegistry, createMiddlewareChain } from '~/app/router.main'
-import { cloudflareContext } from '~/app/middlewares/cloudflare-context'
+import { cloudflareContext } from '~/app/middleware/cloudflare-context'
 
 export function createAppRouter(env: Env, ctx: ExecutionContext): Router {
   // This middleware provides env/ctx to all subsequent middleware and handlers
