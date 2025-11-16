@@ -12,4 +12,3 @@ tmp/
 # Wrangler
 .wrangler/
 .dev.vars
-wrangler.jsonc
