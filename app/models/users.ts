@@ -6,8 +6,8 @@
  */
 
 import type { AppContext } from '~/app/context.server'
-import { getD1 } from '~/app/services/container'
-import { hashPassword } from '~/app/utils/password'
+import { getDB } from '~/app/middleware/d1'
+import { hashPassword, verifyPassword } from '~/app/utils/password'
 import { v } from '~/app/utils/validation'
 import { generateId, nanoidValidator } from '~/app/utils/nanoid'
 
@@ -109,8 +109,9 @@ function rowToUser(row: UserRow | null | undefined): User | undefined {
  * Get all users
  */
 export async function getAllUsers(context: AppContext): Promise<User[]> {
-  const d1 = getD1(context)
-  const rows = await d1.users.getAll() as UserRow[]
+  const db = getDB(context)
+  const result = await db.prepare('SELECT * FROM users ORDER BY created_at DESC').all()
+  const rows = result.results as unknown as UserRow[]
   return rows.map(row => rowToUser(row)).filter((u): u is User => u !== undefined)
 }
 
@@ -118,8 +119,8 @@ export async function getAllUsers(context: AppContext): Promise<User[]> {
  * Get user by ID
  */
 export async function getUserById(context: AppContext, id: string): Promise<User | undefined> {
-  const d1 = getD1(context)
-  const row = await d1.users.getById(id) as UserRow | null
+  const db = getDB(context)
+  const row = await db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first() as UserRow | null
   return rowToUser(row)
 }
 
@@ -127,8 +128,8 @@ export async function getUserById(context: AppContext, id: string): Promise<User
  * Get user by email
  */
 export async function getUserByEmail(context: AppContext, email: string): Promise<User | undefined> {
-  const d1 = getD1(context)
-  const row = await d1.users.getByEmail(email) as UserRow | null
+  const db = getDB(context)
+  const row = await db.prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?)').bind(email).first() as UserRow | null
   return rowToUser(row)
 }
 
@@ -136,9 +137,15 @@ export async function getUserByEmail(context: AppContext, email: string): Promis
  * Authenticate user with email and password
  */
 export async function authenticateUser(context: AppContext, email: string, password: string): Promise<User | undefined> {
-  const d1 = getD1(context)
-  const row = await d1.users.authenticate(email, password) as UserRow | null
-  return rowToUser(row)
+  const user = await getUserByEmail(context, email)
+  if (!user) {
+    return undefined
+  }
+  const valid = await verifyPassword(password, user.password)
+  if (!valid) {
+    return undefined
+  }
+  return user
 }
 
 /**
@@ -151,15 +158,16 @@ export async function createUser(
   name: string,
   role: 'customer' | 'admin' = 'customer',
 ): Promise<User> {
-  const d1 = getD1(context)
+  const db = getDB(context)
   const hashedPassword = await hashPassword(password)
-  const row = await d1.users.create({
-    id: generateId(),
-    email,
-    password: hashedPassword,
-    name,
-    role
-  }) as UserRow
+  const id = generateId()
+
+  await db
+    .prepare("INSERT INTO users (id, email, password, name, role, created_at) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))")
+    .bind(id, email, hashedPassword, name, role)
+    .run()
+
+  const row = await db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first() as UserRow | null
   const user = rowToUser(row)
   if (!user) {
     throw new Error('Failed to create user')
@@ -171,7 +179,7 @@ export async function createUser(
  * Update user
  */
 export async function updateUser(context: AppContext, id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | undefined> {
-  const d1 = getD1(context)
+  const db = getDB(context)
 
   // Hash password if it's being updated
   const updateData = { ...data }
@@ -179,7 +187,37 @@ export async function updateUser(context: AppContext, id: string, data: Partial<
     updateData.password = await hashPassword(updateData.password)
   }
 
-  const row = await d1.users.update(id, updateData) as UserRow | null
+  const updates: string[] = []
+  const values: any[] = []
+
+  if (updateData.email !== undefined) {
+    updates.push('email = ?')
+    values.push(updateData.email)
+  }
+  if (updateData.password !== undefined) {
+    updates.push('password = ?')
+    values.push(updateData.password)
+  }
+  if (updateData.name !== undefined) {
+    updates.push('name = ?')
+    values.push(updateData.name)
+  }
+  if (updateData.role !== undefined) {
+    updates.push('role = ?')
+    values.push(updateData.role)
+  }
+
+  if (updates.length === 0) {
+    return getUserById(context, id)
+  }
+
+  values.push(id)
+  await db
+    .prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`)
+    .bind(...values)
+    .run()
+
+  const row = await db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first() as UserRow | null
   return rowToUser(row)
 }
 
@@ -187,8 +225,9 @@ export async function updateUser(context: AppContext, id: string, data: Partial<
  * Delete user
  */
 export async function deleteUser(context: AppContext, id: string): Promise<boolean> {
-  const d1 = getD1(context)
-  return await d1.users.delete(id)
+  const db = getDB(context)
+  const result = await db.prepare('DELETE FROM users WHERE id = ?').bind(id).run()
+  return result.meta.changes > 0
 }
 
 /**
@@ -201,8 +240,11 @@ export async function createPasswordResetToken(context: AppContext, email: strin
   const token = generateId(32)
   const expiresAt = Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
 
-  const d1 = getD1(context)
-  await d1.passwordResetTokens.create(token, user.id, expiresAt)
+  const db = getDB(context)
+  await db
+    .prepare('INSERT INTO password_reset_tokens (token, user_id, expires_at) VALUES (?, ?, ?)')
+    .bind(token, user.id, expiresAt)
+    .run()
 
   return token
 }
@@ -211,22 +253,25 @@ export async function createPasswordResetToken(context: AppContext, email: strin
  * Reset password using token
  */
 export async function resetPassword(context: AppContext, token: string, newPassword: string): Promise<boolean> {
-  const d1 = getD1(context)
-  const tokenData = await d1.passwordResetTokens.get(token)
+  const db = getDB(context)
+  const tokenData = await db
+    .prepare('SELECT * FROM password_reset_tokens WHERE token = ?')
+    .bind(token)
+    .first() as { token: string; user_id: string; expires_at: number } | null
 
   if (!tokenData) return false
 
   const now = Math.floor(Date.now() / 1000)
   if (tokenData.expires_at < now) {
-    await d1.passwordResetTokens.delete(token)
+    await db.prepare('DELETE FROM password_reset_tokens WHERE token = ?').bind(token).run()
     return false
   }
 
-  const user = await getUserById(context, tokenData.user_id as string)
+  const user = await getUserById(context, tokenData.user_id)
   if (!user) return false
 
   await updateUser(context, user.id, { password: newPassword })
-  await d1.passwordResetTokens.delete(token)
+  await db.prepare('DELETE FROM password_reset_tokens WHERE token = ?').bind(token).run()
 
   return true
 }

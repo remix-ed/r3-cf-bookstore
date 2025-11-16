@@ -19,8 +19,8 @@ import { login, getUserIdFromSession } from '~/app/utils/session'
 import type { User } from '~/app/models/users'
 import type { AppContext } from '~/app/context.server'
 import { cloudflareContextKey } from '~/app/context.server'
-import { SERVICES_KEY } from '~/app/services/container'
-import { createD1Service } from '~/app/services/d1.server'
+import { DB_KEY } from '~/app/middleware/d1'
+import { SESSION_KEY } from '~/app/middleware/session'
 import { createSessionService } from '~/app/services/session.server'
 
 describe('Security Vulnerability Tests', () => {
@@ -38,10 +38,8 @@ describe('Security Vulnerability Tests', () => {
     })
 
     // Initialize services (D1 and Session)
-    storage.set(SERVICES_KEY, {
-      d1: createD1Service(router.env),
-      session: createSessionService(router.env.SESSION_KV),
-    })
+    storage.set(DB_KEY, router.env.DB)
+    storage.set(SESSION_KEY, createSessionService(router.env.SESSION_KV))
 
     context = storage as any as AppContext
   })

@@ -6,7 +6,7 @@
  */
 
 import type { AppContext } from '~/app/context.server'
-import { getD1 } from '~/app/services/container'
+import { getDB } from '~/app/middleware/d1'
 import { v } from '~/app/utils/validation'
 import { generateId, nanoidValidator } from '~/app/utils/nanoid'
 
@@ -118,20 +118,22 @@ function parseOrder(dbOrder: OrderRow): Order {
 }
 
 export async function getAllOrders(context: AppContext): Promise<Order[]> {
-  const d1 = getD1(context)
-  const orders = await d1.orders.getAll() as OrderRow[]
+  const db = getDB(context)
+  const result = await db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all()
+  const orders = result.results as unknown as OrderRow[]
   return orders.map(parseOrder)
 }
 
 export async function getOrderById(context: AppContext, id: string): Promise<Order | undefined> {
-  const d1 = getD1(context)
-  const order = await d1.orders.getById(id) as OrderRow | null
+  const db = getDB(context)
+  const order = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(id).first() as OrderRow | null
   return order ? parseOrder(order) : undefined
 }
 
 export async function getOrdersByUserId(context: AppContext, userId: string): Promise<Order[]> {
-  const d1 = getD1(context)
-  const orders = await d1.orders.getByUserId(userId) as OrderRow[]
+  const db = getDB(context)
+  const result = await db.prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC').bind(userId).all()
+  const orders = result.results as unknown as OrderRow[]
   return orders.map(parseOrder)
 }
 
@@ -143,21 +145,32 @@ export async function createOrder(
 ): Promise<Order> {
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
-  const d1 = getD1(context)
-  const order = await d1.orders.create({
-    id: generateId(),
-    user_id: userId,
-    items: JSON.stringify(items),
-    total,
-    status: 'pending',
-    shipping_address: JSON.stringify(shippingAddress)
-  }) as OrderRow
+  const db = getDB(context)
+  const id = generateId()
+
+  await db
+    .prepare("INSERT INTO orders (id, user_id, items, total, status, shipping_address, created_at) VALUES (?, ?, ?, ?, ?, ?, strftime('%s', 'now'))")
+    .bind(
+      id,
+      userId,
+      JSON.stringify(items),
+      total,
+      'pending',
+      JSON.stringify(shippingAddress)
+    )
+    .run()
+
+  const order = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(id).first() as OrderRow | null
+  if (!order) {
+    throw new Error('Failed to create order')
+  }
 
   return parseOrder(order)
 }
 
 export async function updateOrderStatus(context: AppContext, id: string, status: Order['status']): Promise<Order | undefined> {
-  const d1 = getD1(context)
-  const order = await d1.orders.updateStatus(id, status) as OrderRow | null
+  const db = getDB(context)
+  await db.prepare('UPDATE orders SET status = ? WHERE id = ?').bind(status, id).run()
+  const order = await db.prepare('SELECT * FROM orders WHERE id = ?').bind(id).first() as OrderRow | null
   return order ? parseOrder(order) : undefined
 }

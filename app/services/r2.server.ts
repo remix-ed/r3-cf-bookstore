@@ -6,7 +6,7 @@
  *
  * Usage:
  * ```ts
- * const r2 = createR2Service(env.UPLOADS)
+ * const r2 = createR2Service(env.UPLOADS_BUCKET)
  * await r2.put('file-key', fileBuffer, { contentType: 'image/png' })
  * const file = await r2.get('file-key')
  * ```

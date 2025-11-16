@@ -1,22 +1,52 @@
 import { createRouter, type Router } from '@remix-run/fetch-router'
 
-import { routeRegistry, createMiddlewareChain } from '~/app/router.main'
+import { routes, createRouteMiddleware } from '~/app/routes'
 import { cloudflareContext } from '~/app/middleware/cloudflare-context'
 
-export function createAppRouter(env: Env, ctx: ExecutionContext): Router {
-  // This middleware provides env/ctx to all subsequent middleware and handlers
-  const cloudflareMiddleware = cloudflareContext({ env, ctx })
-  const middlewareChain = createMiddlewareChain(env, ctx)
-  const router = createRouter({ middleware: [cloudflareMiddleware, ...middlewareChain] })
+// Import all route handlers
+import { home, about, contact, search } from '~/app/routes/marketing'
+import booksHandlers from '~/app/routes/books'
+import authHandlers from '~/app/routes/auth'
+import accountHandlers from '~/app/routes/account'
+import cartHandlers from '~/app/routes/cart'
+import checkoutHandlers from '~/app/routes/checkout'
+import adminHandlers from '~/app/routes/admin'
+import fragmentsHandlers from '~/app/routes/fragments'
+import { uploadsHandler } from '~/app/routes/uploads'
+import { assets as assetsHandler, images as imagesHandler } from '~/app/public'
 
-  // Route registration from routes registry
+/**
+ * Route registry - maps routes to their handlers
+ */
+export const routeRegistry = {
+  assets: { route: routes.assets, handler: assetsHandler },
+  images: { route: routes.images, handler: imagesHandler },
+  uploads: { route: routes.uploads, handler: uploadsHandler },
+  home: { route: routes.home, handler: home },
+  about: { route: routes.about, handler: about },
+  contact: { route: routes.contact, handler: contact },
+  search: { route: routes.search, handler: search },
+  fragments: { route: routes.fragments, handler: fragmentsHandlers },
+  books: { route: routes.books, handler: booksHandlers },
+  auth: { route: routes.auth, handler: authHandlers },
+  account: { route: routes.account, handler: accountHandlers },
+  cart: { route: routes.cart, handler: cartHandlers },
+  checkout: { route: routes.checkout, handler: checkoutHandlers },
+  admin: { route: routes.admin, handler: adminHandlers },
+} as const
+
+export function createAppRouter(env: Env, ctx: ExecutionContext): Router {
+  // Build middleware chain: cloudflare context first, then route middleware
+  const middleware = [cloudflareContext({ env, ctx }), ...createRouteMiddleware(env)]
+  const router = createRouter({ middleware })
+
+  // Register all routes from registry
   Object.values(routeRegistry).forEach((config: any) => {
     const { route, handler, method = 'map' } = config
-
-    // Type-safe dynamic method invocation - Supports: get, post, put, delete, patch, head, options, map
-    // Use call() to maintain 'this' context
-    const routerMethod = (router as any)[method] as (route: any, handler: any) => void
-    routerMethod.call(router, route, handler)
+    const routerMethod = (router as any)[method]
+    if (routerMethod) {
+      routerMethod.call(router, route, handler)
+    }
   })
 
   return router

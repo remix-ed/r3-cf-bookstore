@@ -6,7 +6,7 @@ import { getEnv } from '~/app/context.server'
 
 export let uploadsHandler: BuildRouteHandler<'GET', typeof routes.uploads> = async ({ params, storage: context }) => {
   let env = getEnv(context)
-  let file = await getUploadedFile(env.UPLOADS, params.key)
+  let file = await getUploadedFile(env.UPLOADS_BUCKET, params.key)
 
   if (!file) {
     return new Response('File not found', { status: 404 })

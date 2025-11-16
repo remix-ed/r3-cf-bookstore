@@ -1,4 +1,11 @@
-import { route, formAction, resources } from '@remix-run/fetch-router'
+import { route, formAction, resources, type Middleware } from '@remix-run/fetch-router'
+import { formData, type FileUploadHandler } from '@remix-run/fetch-router/form-data-middleware'
+import { logger } from '@remix-run/fetch-router/logger-middleware'
+import { methodOverride } from '@remix-run/fetch-router/method-override-middleware'
+import { injectDB } from '~/app/middleware/d1'
+import { injectSession } from '~/app/middleware/session'
+import { createUploadHandler } from '~/app/utils/uploads'
+import { isDevelopment } from '~/app/utils/mode'
 
 // Route patterns - defined once and reused for type safety
 export const ROUTE_PATTERNS = {
@@ -98,3 +105,34 @@ export const routes = route({
     }),
   }),
 })
+
+/**
+ * Create route middleware array
+ *
+ * Middleware order is important:
+ * 1. injectDB - Provides database access
+ * 2. injectSession - Provides session service
+ * 3. formData - Parses form data from requests (with R2 upload handler)
+ * 4. methodOverride - Enables PUT/DELETE via _method field
+ * 5. logger - (Development only) Request logging
+ */
+export function createRouteMiddleware(env: Env): Middleware[] {
+  const middleware: Middleware[] = [
+    injectDB,
+    injectSession,
+  ]
+
+  // Form data parsing with R2 upload handler
+  const uploadHandler = createUploadHandler(env.UPLOADS_BUCKET)
+  middleware.push(formData({ uploadHandler }))
+
+  // Method override for PUT/DELETE via forms
+  middleware.push(methodOverride())
+
+  // Conditionally add development logging
+  if (isDevelopment()) {
+    middleware.push(logger({ log: console.log }))
+  }
+
+  return middleware
+}

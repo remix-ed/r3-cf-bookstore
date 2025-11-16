@@ -13,11 +13,10 @@
 import * as assert from 'node:assert/strict'
 import { describe, it, before } from 'node:test'
 import { createTestRouter } from '../../test/helpers.ts'
-import { cloudflareContextKey } from '../context.server.ts'
-import type { RequestContext } from '@remix-run/fetch-router'
+import { cloudflareContextKey, type AppContext } from '../context.server.ts'
 import { generateId, NANOID_PATTERN } from '../utils/nanoid.ts'
-import { SERVICES_KEY } from '../services/container.ts'
-import { createD1Service } from '../services/d1.server.ts'
+import { DB_KEY } from '../middleware/d1.ts'
+import { SESSION_KEY } from '../middleware/session.ts'
 import { createSessionService } from '../services/session.server.ts'
 import resetSeed from '~/database/seeds/test/001-test-reset.seed'
 import usersSeed from '~/database/seeds/test/002-test-users.seed'
@@ -37,7 +36,7 @@ import {
 
 describe('Books Model', () => {
   let router: any
-  let context: RequestContext
+  let context: AppContext
 
   before(async () => {
     router = await createTestRouter()
@@ -49,10 +48,8 @@ describe('Books Model', () => {
 
     const storage = new Map()
     storage.set(cloudflareContextKey, { env: router.env, ctx: router.ctx })
-    storage.set(SERVICES_KEY, {
-      d1: createD1Service(router.env),
-      session: createSessionService(router.env.SESSION_KV)
-    })
+    storage.set(DB_KEY, router.env.DB)
+    storage.set(SESSION_KEY, createSessionService(router.env.SESSION_KV))
 
     context = storage as any
   })
@@ -73,10 +70,8 @@ describe('Books Model', () => {
 
       const storage = new Map()
       storage.set(cloudflareContextKey, { env: router.env, ctx: router.ctx })
-      storage.set(SERVICES_KEY, {
-        d1: createD1Service(router.env),
-        session: createSessionService(router.env.SESSION_KV)
-      })
+      storage.set(DB_KEY, router.env.DB)
+      storage.set(SESSION_KEY, createSessionService(router.env.SESSION_KV))
       const emptyContext = storage as any
 
       // Act

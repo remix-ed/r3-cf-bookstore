@@ -7,7 +7,7 @@
  */
 
 import type { AppContext } from '~/app/context.server'
-import { getSessionService } from '~/app/services/container'
+import { getSessionService } from '~/app/middleware/session'
 import { createSessionService, type SessionData } from '~/app/services/session.server'
 import type { User } from '~/app/models/users'
 import { generateId } from '~/app/utils/nanoid'

@@ -6,7 +6,7 @@
  */
 
 import type { AppContext } from '~/app/context.server'
-import { getSessionService } from '~/app/services/container'
+import { getSessionService } from '~/app/middleware/session'
 import { v } from '~/app/utils/validation'
 import { nanoidValidator } from '~/app/utils/nanoid'
 
