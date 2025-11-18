@@ -1,5 +1,5 @@
 import { route, formAction, resources, type Middleware } from '@remix-run/fetch-router'
-import { formData, type FileUploadHandler } from '@remix-run/fetch-router/form-data-middleware'
+import { formData } from '@remix-run/fetch-router/form-data-middleware'
 import { logger } from '@remix-run/fetch-router/logger-middleware'
 import { methodOverride } from '@remix-run/fetch-router/method-override-middleware'
 import { injectDB } from '~/app/middleware/d1'
@@ -8,18 +8,13 @@ import { createUploadHandler } from '~/app/utils/uploads'
 import { isDevelopment } from '~/app/utils/mode'
 
 // Route patterns - defined once and reused for type safety
-export const ROUTE_PATTERNS = {
+export const STATIC_PATTERNS = {
   assets: '/assets/*path',
   images: '/images/*path',
   uploads: '/uploads/*key',
 } as const
 
 export const routes = route({
-  assets: ROUTE_PATTERNS.assets,
-  images: ROUTE_PATTERNS.images,
-  uploads: ROUTE_PATTERNS.uploads,
-
-  // Simple static routes
   home: '/',
   about: '/about',
   contact: route('/contact', {
@@ -104,6 +99,10 @@ export const routes = route({
       param: 'orderId',
     }),
   }),
+
+  assets: STATIC_PATTERNS.assets,
+  images: STATIC_PATTERNS.images,
+  uploads: STATIC_PATTERNS.uploads,
 })
 
 /**

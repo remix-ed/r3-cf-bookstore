@@ -25,7 +25,7 @@ export function Document({
           button { background: none; border: none; cursor: pointer; }
           img { display: block; max-width: 100%; }
           a { color: inherit; }
-          
+
           /* Base Styles */
           body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; }
           .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }

@@ -8,8 +8,8 @@ import {
   createBook,
   updateBook,
   deleteBook,
-  InsertBookSchema,
-  UpdateBookSchema,
+  InsertBookFormSchema,
+  UpdateBookFormSchema,
 } from '~/app/models/books'
 import { Layout } from '~/app/layout'
 import { USER_KEY } from '~/app/middleware/auth'
@@ -250,7 +250,7 @@ export default {
     let user = context.get(USER_KEY)!
 
     // Validate book creation data
-    const validation = validateForm(formData, InsertBookSchema)
+    const validation = validateForm(formData, InsertBookFormSchema)
 
     if (!validation.success) {
       return renderValidationError(context, validation, {
@@ -408,7 +408,7 @@ export default {
     }
 
     // Validate book update data
-    const validation = validateForm(formData, UpdateBookSchema)
+    const validation = validateForm(formData, UpdateBookFormSchema)
 
     if (!validation.success) {
       return renderValidationError(context, validation, {

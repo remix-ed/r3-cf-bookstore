@@ -88,6 +88,39 @@ export const InsertBookSchema = v.object({
 
 export const UpdateBookSchema = v.partial(InsertBookSchema)
 
+// Form-specific schemas with explicit string-to-type transformations
+// Use these with validateForm() since FormData always returns strings
+export const InsertBookFormSchema = v.object({
+  title: BookSchema.entries.title,
+  author: BookSchema.entries.author,
+  slug: BookSchema.entries.slug,
+  description: BookSchema.entries.description,
+  price: v.pipe(
+    v.string(),
+    v.transform((s) => parseFloat(s)),
+    v.number(),
+    v.minValue(0)
+  ),
+  genre: BookSchema.entries.genre,
+  isbn: BookSchema.entries.isbn,
+  publishedYear: v.pipe(
+    v.string(),
+    v.transform((s) => parseInt(s, 10)),
+    v.number(),
+    v.minValue(1000),
+    v.maxValue(9999)
+  ),
+  inStock: v.pipe(
+    v.string(),
+    v.transform((s) => s === 'true'),
+    v.boolean()
+  ),
+  imageUrls: v.optional(v.array(v.string()), []),
+  coverUrl: v.optional(v.string(), '/images/placeholder.jpg'),
+})
+
+export const UpdateBookFormSchema = v.partial(InsertBookFormSchema)
+
 export const SearchBooksSchema = v.object({
   query: v.optional(v.string()),
   genre: v.optional(v.string()),

@@ -9,12 +9,12 @@
 
 import type { BuildRouteHandler } from '@remix-run/fetch-router'
 import { getEnv } from '~/app/context.server'
-import { ROUTE_PATTERNS } from '~/app/routes'
+import { routes } from '~/app/routes'
 
 /**
  * Serve JavaScript/CSS assets from Workers Static Assets
  */
-export let assets: BuildRouteHandler<'GET', typeof ROUTE_PATTERNS.assets> = async ({ params, storage: context, request }) => {
+export let assets: BuildRouteHandler<'GET', typeof routes.assets> = async ({ params, storage: context, request }) => {
   const env = getEnv(context)
   // Construct the full path for the asset
   const url = new URL(request.url)
@@ -26,7 +26,7 @@ export let assets: BuildRouteHandler<'GET', typeof ROUTE_PATTERNS.assets> = asyn
 /**
  * Serve images from Workers Static Assets
  */
-export let images: BuildRouteHandler<'GET', typeof ROUTE_PATTERNS.images> = async ({ params, storage: context, request }) => {
+export let images: BuildRouteHandler<'GET', typeof routes.images> = async ({ params, storage: context, request }) => {
   const env = getEnv(context)
   // Construct the full path for the image
   const url = new URL(request.url)

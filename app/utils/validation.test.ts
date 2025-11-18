@@ -7,7 +7,6 @@
  * - assertValid: Type assertion for runtime checking
  * - validateInput: Validation middleware creator
  * - validateFormData: Form data validation
- * - convertFormDataTypes: Form data type conversion
  * - validateJSON: JSON body validation
  */
 
@@ -20,7 +19,6 @@ import {
   assertValid,
   validateInput,
   validateFormData,
-  convertFormDataTypes,
   validateJSON,
 } from './validation.ts'
 
@@ -28,6 +26,17 @@ import {
 const SimpleSchema = v.object({
   name: v.pipe(v.string(), v.minLength(1)),
   age: v.pipe(v.number(), v.minValue(0)),
+})
+
+// Form-specific schema with transformations (for FormData which returns strings)
+const SimpleFormSchema = v.object({
+  name: v.pipe(v.string(), v.minLength(1)),
+  age: v.pipe(
+    v.string(),
+    v.transform((s) => parseInt(s, 10)),
+    v.number(),
+    v.minValue(0)
+  ),
 })
 
 const NestedSchema = v.object({
@@ -357,119 +366,6 @@ describe('Validation Utilities', () => {
   })
 
   // =============================================================================
-  // convertFormDataTypes() Tests
-  // =============================================================================
-
-  describe('convertFormDataTypes', () => {
-    it('converts integer strings to numbers', () => {
-      // Arrange
-      const data = { age: '30', count: '100' }
-
-      // Act
-      const result = convertFormDataTypes(data)
-
-      // Assert
-      assert.strictEqual(result.age, 30, 'Should convert integer string to number')
-      assert.strictEqual(result.count, 100, 'Should convert all integer strings')
-    })
-
-    it('converts float strings to numbers', () => {
-      // Arrange
-      const data = { price: '29.99', rate: '0.5' }
-
-      // Act
-      const result = convertFormDataTypes(data)
-
-      // Assert
-      assert.strictEqual(result.price, 29.99, 'Should convert float string to number')
-      assert.strictEqual(result.rate, 0.5, 'Should convert all float strings')
-    })
-
-    it('converts "true" and "false" to booleans', () => {
-      // Arrange
-      const data = { active: 'true', disabled: 'false' }
-
-      // Act
-      const result = convertFormDataTypes(data)
-
-      // Assert
-      assert.strictEqual(result.active, true, 'Should convert "true" to boolean')
-      assert.strictEqual(result.disabled, false, 'Should convert "false" to boolean')
-    })
-
-    it('preserves regular strings', () => {
-      // Arrange
-      const data = { name: 'John', email: 'john@example.com' }
-
-      // Act
-      const result = convertFormDataTypes(data)
-
-      // Assert
-      assert.strictEqual(result.name, 'John', 'Should preserve string')
-      assert.strictEqual(result.email, 'john@example.com', 'Should preserve all strings')
-    })
-
-    it('preserves non-string values', () => {
-      // Arrange
-      const date = new Date()
-      const data = { timestamp: date, count: 42 }
-
-      // Act
-      const result = convertFormDataTypes(data)
-
-      // Assert
-      assert.strictEqual(result.timestamp, date, 'Should preserve Date object')
-      assert.strictEqual(result.count, 42, 'Should preserve number')
-    })
-
-    it('handles empty strings', () => {
-      // Arrange
-      const data = { name: '' }
-
-      // Act
-      const result = convertFormDataTypes(data)
-
-      // Assert
-      assert.strictEqual(result.name, '', 'Should preserve empty string')
-    })
-
-    it('handles mixed types correctly', () => {
-      // Arrange
-      const data = {
-        name: 'Alice',
-        age: '25',
-        price: '19.99',
-        active: 'true',
-        disabled: 'false',
-        empty: '',
-      }
-
-      // Act
-      const result = convertFormDataTypes(data)
-
-      // Assert
-      assert.strictEqual(result.name, 'Alice', 'String should remain string')
-      assert.strictEqual(result.age, 25, 'Integer string should become number')
-      assert.strictEqual(result.price, 19.99, 'Float string should become number')
-      assert.strictEqual(result.active, true, 'true string should become boolean')
-      assert.strictEqual(result.disabled, false, 'false string should become boolean')
-      assert.strictEqual(result.empty, '', 'Empty string should remain empty string')
-    })
-
-    it('does not convert strings that look like numbers but have leading zeros', () => {
-      // Arrange
-      const data = { zipCode: '01234' }
-
-      // Act
-      const result = convertFormDataTypes(data)
-
-      // Assert
-      // Leading zero means it stays as string (not converted to 1234)
-      assert.strictEqual(result.zipCode, 1234, 'Should convert to number (leading zeros removed)')
-    })
-  })
-
-  // =============================================================================
   // validateFormData() Tests
   // =============================================================================
 
@@ -486,7 +382,7 @@ describe('Validation Utilities', () => {
       })
 
       // Act
-      const result = await validateFormData(request, SimpleSchema)
+      const result = await validateFormData(request, SimpleFormSchema)
 
       // Assert
       assert.strictEqual(result.success, true, 'Should succeed')
@@ -508,7 +404,7 @@ describe('Validation Utilities', () => {
       })
 
       // Act
-      const result = await validateFormData(request, SimpleSchema)
+      const result = await validateFormData(request, SimpleFormSchema)
 
       // Assert
       assert.strictEqual(result.success, false, 'Should fail')
@@ -526,7 +422,7 @@ describe('Validation Utilities', () => {
       })
 
       // Act
-      const result = await validateFormData(request, SimpleSchema)
+      const result = await validateFormData(request, SimpleFormSchema)
 
       // Assert
       assert.strictEqual(result.success, false, 'Should fail for empty form')

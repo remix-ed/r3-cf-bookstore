@@ -123,12 +123,13 @@ export function validateInput<TSchema extends v.BaseSchema<unknown, unknown, v.B
 
 /**
  * Validate form data from a FormData object
+ * Note: FormData always returns string values. Use schema-driven type coercion
+ * with v.pipe() and v.transform() for proper type conversion.
  *
  * @example
- * const result = validateForm(formData, CreateUserInputSchema)
- * if (!result.success) {
- *   return Response.json({ errors: result.errors }, { status: 400 })
- * }
+ * // explicit transformation
+ *  quantity: v.pipe( v.string(), v.transform(s => parseInt(s, 10)), v.number(), v.integer(), v.minValue(1) ),
+ *  price: v.pipe( v.string(), v.transform(s => parseFloat(s)), v.number(), v.minValue(0) )
  */
 export function validateForm<TSchema extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>>(
   formData: FormData,
@@ -140,10 +141,7 @@ export function validateForm<TSchema extends v.BaseSchema<unknown, unknown, v.Ba
     data[key] = value
   })
 
-  // Convert string numbers to actual numbers for numeric fields
-  const converted = convertFormDataTypes(data)
-
-  return validate(schema, converted)
+  return validate(schema, data)
 }
 
 /**
@@ -163,37 +161,6 @@ export async function validateFormData<TSchema extends v.BaseSchema<unknown, unk
   return validateForm(formData, schema)
 }
 
-/**
- * Convert form data string values to appropriate types
- */
-export function convertFormDataTypes(data: Record<string, any>): Record<string, any> {
-  const result: Record<string, any> = {}
-
-  for (const [key, value] of Object.entries(data)) {
-    if (typeof value === 'string') {
-      // Try to convert to number
-      if (/^\d+$/.test(value)) {
-        result[key] = parseInt(value, 10)
-      } else if (/^\d+\.\d+$/.test(value)) {
-        result[key] = parseFloat(value)
-      }
-      // Try to convert to boolean
-      else if (value === 'true') {
-        result[key] = true
-      } else if (value === 'false') {
-        result[key] = false
-      }
-      // Keep as string
-      else {
-        result[key] = value
-      }
-    } else {
-      result[key] = value
-    }
-  }
-
-  return result
-}
 
 /**
  * Validate JSON body from a Request

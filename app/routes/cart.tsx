@@ -6,10 +6,11 @@ import { routes } from '~/app/routes'
 import { Layout } from '~/app/layout'
 import { loadAuth, SESSION_ID_KEY, USER_KEY } from '~/app/middleware/auth'
 import { getBookById } from '~/app/models/books'
-import { getCart, addToCart, updateCartItem, removeFromCart, getCartTotal } from '~/app/models/cart'
+import { getCart, addToCart, updateCartItem, removeFromCart, getCartTotal, UpdateCartItemFormSchema } from '~/app/models/cart'
 import { render } from '~/app/utils/render'
 import { setSessionCookie } from '~/app/utils/session'
 import { RestfulForm } from '~/app/components/restful-form'
+import { validateForm } from '~/app/utils/validation'
 
 export default {
   middleware: [loadAuth],
@@ -156,10 +157,18 @@ export default {
 
       async update({ storage: context, formData }) {
         let sessionId = context.get(SESSION_ID_KEY)
-        let bookId = formData.get('bookId')?.toString() ?? ''
-        let quantity = parseInt(formData.get('quantity')?.toString() ?? '1', 10)
 
-        await updateCartItem(context, sessionId, bookId, quantity)
+        // Validate cart update data
+        const validation = validateForm(formData, UpdateCartItemFormSchema)
+
+        if (!validation.success) {
+          return new Response(JSON.stringify({ errors: validation.errors }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+
+        await updateCartItem(context, sessionId, validation.data.bookId, validation.data.quantity)
 
         let headers = new Headers()
         setSessionCookie(headers, sessionId)

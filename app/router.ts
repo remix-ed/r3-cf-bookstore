@@ -1,5 +1,4 @@
 import { createRouter, type Router } from '@remix-run/fetch-router'
-
 import { routes, createRouteMiddleware } from '~/app/routes'
 import { cloudflareContext } from '~/app/middleware/cloudflare-context'
 
@@ -15,9 +14,6 @@ import fragmentsHandlers from '~/app/routes/fragments'
 import { uploadsHandler } from '~/app/routes/uploads'
 import { assets as assetsHandler, images as imagesHandler } from '~/app/public'
 
-/**
- * Route registry - maps routes to their handlers
- */
 export const routeRegistry = {
   assets: { route: routes.assets, handler: assetsHandler },
   images: { route: routes.images, handler: imagesHandler },
@@ -36,11 +32,11 @@ export const routeRegistry = {
 } as const
 
 export function createAppRouter(env: Env, ctx: ExecutionContext): Router {
-  // Build middleware chain: cloudflare context first, then route middleware
+  // Inject cloudflare Context middleware env/ctx first
   const middleware = [cloudflareContext({ env, ctx }), ...createRouteMiddleware(env)]
   const router = createRouter({ middleware })
 
-  // Register all routes from registry
+  // Dynamically register route handlers
   Object.values(routeRegistry).forEach((config: any) => {
     const { route, handler, method = 'map' } = config
     const routerMethod = (router as any)[method]

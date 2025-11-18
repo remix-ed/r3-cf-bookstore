@@ -45,6 +45,19 @@ export const AddToCartSchema = v.object({
 
 export const UpdateCartItemSchema = v.pick(CartItemSchema, ['bookId', 'quantity'])
 
+// Form-specific schemas with explicit string-to-type transformations
+// Use these with validateForm() since FormData always returns strings
+export const UpdateCartItemFormSchema = v.object({
+  bookId: nanoidValidator(),
+  quantity: v.pipe(
+    v.string(),
+    v.transform((s) => parseInt(s, 10)),
+    v.number(),
+    v.integer(),
+    v.minValue(1)
+  ),
+})
+
 export type AddToCartInput = v.InferOutput<typeof AddToCartSchema>
 export type UpdateCartItemInput = v.InferOutput<typeof UpdateCartItemSchema>
 
